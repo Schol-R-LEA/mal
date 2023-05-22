@@ -92,6 +92,9 @@ TokenVector tokenize(std::string input_stream)
                         return tokens;
                     }
                     break;
+                case '&':
+                    tokens.append(std::make_shared<MalRestArg>());
+                    break;
                 case '.':
                     tokens.append(std::make_shared<MalPeriod>());
                     break;
@@ -114,7 +117,7 @@ TokenVector tokenize(std::string input_stream)
                     read_meta(input_stream, tokens);
                     break;
                 case '\"':
-                    read_string(input_stream, ch, tokens);
+                    read_string(input_stream, tokens);
                     break;
                 case '-':
                     if (isdigit(input_stream[s_index]))
@@ -176,32 +179,48 @@ void read_comment(std::string input_stream)
 }
 
 
-void read_string(std::string input_stream, char leading, TokenVector& tokens)
+void read_string(std::string input_stream, TokenVector& tokens)
 {
     std::string s = "";
-    char ch = leading;
+    char ch;
 
     ch = input_stream[s_index++];
+
     while ((ch != '\"') && s_index < input_stream.length())
     {
         if ((ch == '\\' ) && s_index < input_stream.length())
         {
-            s += ch;
             ch = input_stream[s_index++];
             if (s_index == input_stream.length())
             {
                 throw new IncompleteEscapeException();
             }
 
-            s += ch;
-
-            ch = input_stream[s_index++];
-            continue;
+            if (ch == '\"' || ch == '\\')
+            {
+                s += ch;
+            }
+            else if (ch == 'n')
+            {
+                s += '\n';
+            }
+            else if (ch == 't')
+            {
+                s += '\t';
+            }
+            else
+            {
+                throw new UnbalancedStringException();
+            }
         }
 
-        s += ch;
+        else
+        {
+            s += ch;
+        }
         ch = input_stream[s_index++];
     }
+
     if (ch != '\"')
     {
         throw new UnbalancedStringException();

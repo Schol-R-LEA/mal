@@ -9,6 +9,7 @@
 
 
 #include <complex>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -16,11 +17,17 @@
 #include <gmpxx.h>
 
 
+class Environment;
+class Env_Symbol;
+
+typedef std::shared_ptr<Env_Symbol> EnvPtr;
+
+
 enum MalTypeName
 {
-    MAL_TYPE, MAL_ATOM, MAL_SYMBOL, MAL_KEYWORD,
+    MAL_TYPE, MAL_ATOM, MAL_SYMBOL, MAL_KEYWORD, MAL_REST_ARG,
     MAL_STRING, MAL_CHAR, MAL_BOOLEAN,
-    MAL_LIST, MAL_NULL, MAL_NIL, MAL_VECTOR, MAL_HASHMAP,
+    MAL_LIST, MAL_NULL, MAL_NIL, MAL_PRINT_NIL, MAL_VECTOR, MAL_HASHMAP,
     MAL_PERIOD, MAL_COMMA,
     MAL_READER_MACRO, MAL_DEREF, MAL_UNQUOTE, MAL_SPLICE_UNQUOTE,
     MAL_QUOTE, MAL_QUASIQUOTE, MAL_META,
@@ -28,6 +35,8 @@ enum MalTypeName
     MAL_INTEGER, MAL_FRACTIONAL, MAL_RATIONAL, MAL_COMPLEX,
     MAL_PROCEDURE, MAL_PRIMITIVE
 };
+
+
 
 class MalType;
 
@@ -39,6 +48,8 @@ class TokenVector
 {
 public:
     TokenVector(): current_token(0) {tokens.reserve(65535);};
+    TokenVector(const TokenVector& t);
+    const TokenVector& operator=(const TokenVector& t);
     size_t size() const {return tokens.size();};
     size_t capacity() const {return tokens.capacity();};
     size_t append(MalPtr token);
@@ -48,8 +59,10 @@ public:
     std::string types();
     MalPtr next();
     MalPtr peek();
+    MalPtr car() {return tokens[0];};
     TokenVector cdr();
-    void clear() {tokens.clear();};
+    TokenVector rest();
+    void clear() {tokens.clear(); current_token = 0;};
     bool empty() {return tokens.size() == 0;};
     MalPtr operator[](unsigned int i);
 
@@ -75,13 +88,32 @@ inline bool is_mal_numeric(MalTypeName type)
 inline bool is_mal_container(MalTypeName type)
 {
     return (type == MAL_LIST
+            || type == MAL_NULL
             || type == MAL_VECTOR
             || type == MAL_HASHMAP);
 }
 
 
+inline bool is_mal_reader_macro(MalTypeName type)
+{
+    return (type == MAL_READER_MACRO
+            || type == MAL_QUOTE
+            || type == MAL_QUASIQUOTE
+            || type == MAL_UNQUOTE
+            || type == MAL_SPLICE_UNQUOTE
+            || type == MAL_DEREF
+            || type == MAL_META
+            );
+}
+
+
 
 typedef std::unordered_map<std::string, std::shared_ptr<MalType> > HashMapInternal;
+
+
+typedef std::function<TokenVector(TokenVector)> Procedure;
+typedef std::shared_ptr<Procedure> ProcedurePtr;
+
 
 
 class MalType
@@ -164,6 +196,8 @@ class MalMeta: public MalReaderMacro
 public:
     MalMeta(const TokenVector& seq, TokenVector& arg): MalReaderMacro(arg), sequence(seq) {};
     virtual MalTypeName type() {return MAL_META;};
+    virtual TokenVector meta_target() {return sequence;};
+    virtual TokenVector meta_arguments() {return list;};
     virtual std::string value() {return "(with-meta " + sequence.values() + " " + list.values() + ')';};
 private:
     TokenVector sequence;
@@ -208,8 +242,12 @@ public:
     virtual MalTypeName type() {return MAL_NIL;};
 };
 
-
-
+class MalPrintNil: public MalNull
+{
+public:
+    MalPrintNil(): MalNull("nil") {};
+    virtual MalTypeName type() {return MAL_PRINT_NIL;};
+};
 
 class MalVector: public MalType
 {
@@ -263,6 +301,14 @@ public:
 };
 
 
+class MalRestArg: public MalSymbol
+{
+public:
+    MalRestArg(): MalSymbol("&") {};
+    virtual MalTypeName type() {return MAL_REST_ARG;};
+};
+
+
 class MalChar: public MalAtom
 {
 public:
@@ -276,7 +322,7 @@ class MalString: public MalAtom
 public:
     MalString(std::string r): MalAtom(r) {};
     virtual MalTypeName type() {return MAL_STRING;};
-    virtual std::string value() {return "\"" + repr + "\"";};
+    virtual std::string value() {return repr;};
 };
 
 
@@ -380,11 +426,12 @@ protected:
 class MalProcedure: public MalSymbol
 {
 public:
-    MalProcedure(std::string r, int a): MalSymbol(r), arity(a) {};
+    MalProcedure(Procedure p, int a): MalSymbol("<function>"), procedure(p), arity(a) {};
     virtual MalTypeName type() {return MAL_PROCEDURE;};
-    virtual std::string value() {return "<procedure (" + repr + " " + std::to_string(arity) + ")>";};
     virtual TokenVector raw_value();
+    virtual TokenVector fn(TokenVector args) {return procedure(args);};
 protected:
+    Procedure procedure;
     int arity;
 };
 

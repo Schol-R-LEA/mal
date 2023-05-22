@@ -23,9 +23,14 @@ class Environment
 {
 public:
     Environment(std::shared_ptr<Environment> p = nullptr): parent(p) {};
-    void append(EnvPtr element);
-    bool find(MalPtr p);
+    Environment(std::shared_ptr<Environment> p, TokenVector binds, TokenVector exprs);
+    void set(EnvPtr element);
+    void set(std::string symbol, MalPtr value);
+    void set(MalPtr symbol, MalPtr value);
+    bool find(MalPtr p, bool local = false);
+    bool find(std::string s, bool local = false);
     EnvPtr get(MalPtr p);
+    EnvPtr get(std::string symbol);
     size_t size() const {return env.size();};
     std::vector<EnvPtr> elements() {return env;};
     std::string element_names();
@@ -49,6 +54,7 @@ public:
     virtual MalSymbol symbol() {return sym;};
     virtual MalPtr value() {return val;};
     virtual int arity() {return n_ary;};
+    virtual void set(MalPtr value);
     virtual TokenVector apply(TokenVector& args) {return args;};
 protected:
     MalSymbol sym;
@@ -60,24 +66,24 @@ protected:
 class Env_Primitive: public Env_Symbol
 {
 public:
-    Env_Primitive(MalPtr s, std::function<TokenVector(TokenVector)>& f, int a): Env_Symbol(s), fn(f) {n_ary = a;};
+    Env_Primitive(MalPtr s, Procedure p, int a): Env_Symbol(s), procedure(p) {n_ary = a;};
     virtual Env_Element_Type type() {return ENV_PRIMITIVE;};
     virtual TokenVector apply(TokenVector& args);
 
 protected:
-    std::function<TokenVector(TokenVector)> fn;
+    Procedure procedure;
 };
 
 
 class Env_Procedure: public Env_Symbol
 {
 public:
-    Env_Procedure(MalPtr s, TokenVector& f, int a): Env_Symbol(s), fn(f) {n_ary = a;};
+    Env_Procedure(MalPtr s, MalPtr p, int a): Env_Symbol(s), procedure(p) {n_ary = a;};
     virtual Env_Element_Type type() {return ENV_PROCEDURE;};
     virtual TokenVector apply(TokenVector& args);
-
+    virtual MalPtr fn() {return procedure;};
 protected:
-    TokenVector fn;
+    MalPtr procedure;
 };
 
 

@@ -13,10 +13,44 @@
 #include "exceptions.h"
 
 
+
+TokenVector::TokenVector(const TokenVector& t)
+{
+    tokens.reserve(65535);
+    current_token = t.current_token;
+
+    for (std::vector<MalPtr>::const_iterator it = t.tokens.cbegin(); it != t.tokens.cend(); ++it)
+    {
+        this->tokens.push_back(*it);
+    }
+}
+
+
+const TokenVector& TokenVector::operator=(const TokenVector& t)
+{
+    this->clear();
+    for (std::vector<MalPtr>::const_iterator it = t.tokens.cbegin(); it != t.tokens.cend(); ++it)
+    {
+        this->tokens.push_back(*it);
+    }
+
+    return t;
+}
+
+
 size_t TokenVector::append(MalPtr token)
 {
+    if (token == nullptr)
+    {
+        throw new NullTokenException();
+    }
+ 
     tokens.push_back(token);
-
+    if (this->peek() == nullptr)
+    {
+        throw new NullTokenException();
+    }
+ 
     return this->size();
 }
 
@@ -28,7 +62,7 @@ size_t TokenVector::append(const TokenVector& t)
         this->tokens.push_back(*it);
     }
 
-    return this->size();
+    return tokens.size();
 }
 
 
@@ -83,7 +117,20 @@ TokenVector TokenVector::cdr()
 {
     TokenVector result;
 
-    for (auto i = current_token; i < tokens.size(); ++i)
+    for (size_t i = 1; i < tokens.size(); ++i)
+    {
+        result.append(tokens[i]);
+    }
+    return result;
+}
+
+
+
+TokenVector TokenVector::rest()
+{
+    TokenVector result;
+
+    for (size_t i = current_token; i < tokens.size(); ++i)
     {
         result.append(tokens[i]);
     }

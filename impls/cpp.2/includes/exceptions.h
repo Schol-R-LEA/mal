@@ -169,4 +169,63 @@ protected:
 };
 
 
+class InvalidDefineException
+{
+public:
+    InvalidDefineException(std::string sym): symbol_value(sym) {};
+    std::string value() const { return symbol_value; };
+protected:
+    std::string symbol_value;
+};
+
+
+class InvalidLetException
+{
+public:
+    InvalidLetException(std::string sym): symbol_value(sym) {};
+    std::string value() const { return symbol_value; };
+protected:
+    std::string symbol_value;
+};
+
+
+class UnequalBindExprListsException
+{
+public:
+    UnequalBindExprListsException(std::string b, std::string e): binds(b), exprs(e) {};
+    std::string value() const { return binds + ": " + exprs; };
+protected:
+    std::string binds, exprs;
+};
+
+
+class InvalidBindExprListsException
+{
+public:
+    InvalidBindExprListsException(std::string b, std::string e): binds(b), exprs(e) {};
+    std::string value() const { return binds + ": " + exprs; };
+protected:
+    std::string binds, exprs;
+};
+
+
+class NonNumericComparisonException
+{
+public:
+    NonNumericComparisonException(std::string b, std::string e): car(b), cdr(e) {};
+    std::string value() const { return car + ": " + cdr; };
+protected:
+    std::string car, cdr;
+};
+
+
+
+
+class NullTokenException
+{
+public:
+    NullTokenException() {};
+};
+
+
 #endif

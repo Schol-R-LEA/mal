@@ -6,6 +6,7 @@
 #include <exception>
 #include <functional>
 #include <iostream>
+#include <fstream>
 #include <memory>
 #include <new>
 #include <string>
@@ -17,6 +18,8 @@
 #include "exceptions.h"
 #include "eval.h"
 #include "env.h"
+
+void init_prelude();
 
 TokenVector READ(std::string input)
 {
@@ -39,6 +42,7 @@ std::string rep(std::string input)
 int main()
 {
     init_global_environment();
+    init_prelude();
 
     LineEdit line;
 
@@ -130,7 +134,26 @@ int main()
         {
             std::cout << "(invalid let syntax): " << e->value() << "." << '\n';
         }
-
+        catch(InvalidEnvironmentSymbolException* e)
+        {
+            std::cout << "(invalid environment symbol): " << e->value() << "." << '\n';
+        }
+        catch(UnequalBindExprListsException* e)
+        {
+            std::cout << "(unequal number of parameters and arguments): " << e->value() << "." << '\n';
+        }
+        catch(InvalidBindExprListsException* e)
+        {
+            std::cout << "(parameters and/or arguments not lists or vectors): " << e->value() << "." << '\n';
+        }
+        catch(NonNumericComparisonException* e)
+        {
+            std::cout << "(non-numeric comparison): " << e->value() << "." << '\n';
+        }
+        catch(NullTokenException* e)
+        {
+            std::cout << "(null token)." << '\n';
+        }
         catch(std::exception *e)
         {
             std::cout << e->what() << "." << '\n';
@@ -139,4 +162,18 @@ int main()
     std::cout << "Exiting.\n";
 
     return 0;
+}
+
+
+void init_prelude()
+{
+    char buff[65536];
+    std::ifstream prelude("prelude.mal", std::ios::in);
+
+    while (!prelude.eof())
+    {
+        prelude.getline(buff, 65535);
+        std::string procedure = buff;
+        EVAL(READ(procedure), repl_env);
+    }
 }
