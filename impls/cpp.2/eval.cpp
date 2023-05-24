@@ -45,6 +45,7 @@ TokenVector EVAL(TokenVector& input, Environment& env)
                 TokenVector temp;
                 temp.append(input.next()->raw_value());
                 auto result = eval_def(temp, env);
+                env = global_env;
                 return result;
             }
             else if (form == "let*")
@@ -94,7 +95,7 @@ TokenVector EVAL(TokenVector& input, Environment& env)
                 {
                     if (type == MAL_LIST)
                     {
-                        if (result.peek() == nullptr || result.peek()->raw_value().empty())
+                        if (result.peek() == nullptr)
                         {
                             throw new ProcedureNotFoundException("");
                         }
@@ -105,19 +106,16 @@ TokenVector EVAL(TokenVector& input, Environment& env)
 
                             if (p_type == MAL_SYMBOL)
                             {
-                                std::cout << "mal symbol" << std::endl;
                                 fn = env.get(result.car());
                             }
                             else if (p_type == MAL_PRIMITIVE)
                             {
-                                std::cout << "mal Primitive" << std::endl;
                                 auto procedure = result.next()->raw_value().car();
                                 fn = env.get(procedure);
                                 return apply_fn(fn, result.cdr());
                             }
                             else if (p_type == MAL_PROCEDURE)
                             {
-                                std::cout << "mal Procedure" << std::endl;
                                 auto procedure = result.next();
                                 TokenVector raw_args;
                                 raw_args.append(result.cdr());
@@ -132,14 +130,11 @@ TokenVector EVAL(TokenVector& input, Environment& env)
                                 input = proc_frame->ast();
                                 env = Environment(proc_frame->parent(), proc_frame->params(), args);
                             }
-                            if (fn == nullptr)
-                            {
-                                throw new ProcedureNotFoundException(result.car()->value());
-                            }
                         }
                     }
                     else
                     {
+                        env = global_env;
                         return result;
                     }
                 }
@@ -147,6 +142,7 @@ TokenVector EVAL(TokenVector& input, Environment& env)
         }
         else
         {
+            env = global_env;
             return input;
         }
     }
@@ -169,7 +165,6 @@ TokenVector eval_ast(TokenVector& input, Environment& env)
     {
         case MAL_SYMBOL:
             {
-                std::cout << "Symbol" << std::endl;
                 MalPtr symbol = input.next();
 
                 if (symbol == nullptr)
@@ -181,19 +176,16 @@ TokenVector eval_ast(TokenVector& input, Environment& env)
 
                 if (p == nullptr)
                 {
-                    std::cout << "null pointer" << std::endl;
                     throw new SymbolNotInitializedException(symbol->value());
                 }
 
                 if (p->type() == ENV_PRIMITIVE)
                 {
-                    std::cout << "Env Primitive" << std::endl;
                     MalPtr prim = std::make_shared<MalPrimitive>(p->symbol().value(), p->arity());
                     result.append(prim);
                 }
                 else if (p->type() == ENV_PROCEDURE)
                 {
-                    std::cout << "Env Procedure" << std::endl;
                     auto proc = (dynamic_cast<Env_Procedure*>(&(*p)))->proc();
                     auto procedure_frame = dynamic_cast<MalProcedure*>(&(*proc));
                     env = procedure_frame->parent();
@@ -201,7 +193,6 @@ TokenVector eval_ast(TokenVector& input, Environment& env)
                 }
                 else if (p->type() == ENV_SYMBOL)
                 {
-                    std::cout << "Env Symbol " << p->value()->value() << std::endl;
                     result.append(p->value());
                 }
                 else
@@ -324,11 +315,11 @@ TokenVector eval_def(TokenVector& input, Environment& env)
             }
 
             auto placeholder = std::make_shared<MalNull>();
-            env.set(symbol, placeholder);      // pre-initialize symbol in environment
-            auto sym_ptr = env.get(symbol);    // and retrieve the pointer to the env entry
             TokenVector val_vec;
             val_vec.append(val_ptr);
             auto value = EVAL(val_vec, env);
+            env.set(symbol, value.peek());
+            auto sym_ptr = env.get(symbol); // get the pointer to the local symbol
             sym_ptr->set(value.next());
             TokenVector result;
             result.append(env.get(symbol)->value());

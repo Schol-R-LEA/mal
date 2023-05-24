@@ -75,7 +75,7 @@ class Env_Procedure: public Env_Symbol
 public:
     Env_Procedure(MalPtr s, MalPtr p, int a): Env_Symbol(s), procedure(p) {n_ary = a;};
     virtual Env_Element_Type type() {return ENV_PROCEDURE;};
-    // virtual TokenVector apply(TokenVector& args);
+    virtual MalPtr value() {return procedure;};
     virtual MalPtr proc() {return procedure;};
 
 protected:
