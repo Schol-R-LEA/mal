@@ -20,7 +20,9 @@
 
 TokenVector READ(std::string input)
 {
-    return read_str(input);
+    TokenVector result;
+    result.append(read_str(input));
+    return result;
 }
 
 
@@ -32,7 +34,9 @@ std::string PRINT(TokenVector input)
 
 std::string rep(std::string input)
 {
-    return PRINT(EVAL(READ(input), repl_env));
+    TokenVector temp;
+    temp.append(READ(input));
+    return PRINT(EVAL(temp, repl_env));
 }
 
 

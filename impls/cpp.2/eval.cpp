@@ -17,108 +17,143 @@
 #include "eval.h"
 
 
-TokenVector EVAL(TokenVector input, Environment& env)
+TokenVector EVAL(TokenVector& input, Environment& env)
 {
-    if (input.empty())
+    Environment global_env = env;
+    while (true)
     {
-        return input;
-    }
+        if (input.peek() == nullptr)
+        {
+            throw new NullTokenException();
+        }
+        if (input.empty())
+        {
+            return input;
+        }
 
-    auto type = input.peek()->type();
-    if (type == MAL_SYMBOL || type == MAL_VECTOR || type == MAL_HASHMAP)
-    {
-        return eval_ast(input, env);
-    }
-    else if (type == MAL_LIST)
-    {
-        auto form = input.peek()->raw_value().car()->value();
+        auto type = input.peek()->type();
+        if (type == MAL_SYMBOL || type == MAL_VECTOR || type == MAL_HASHMAP)
+        {
+            return eval_ast(input, env);
+        }
+        else if (type == MAL_LIST)
+        {
+            auto form = input.peek()->raw_value().car()->value();
 
-        if (form == "def!")
-        {
-            return eval_def(input.next()->raw_value(), env);
-        }
-        else if (form == "let*")
-        {
-            return eval_let(input.next()->raw_value(), env);
-        }
-        else if (form == "do")
-        {
-            return eval_do(input.next()->raw_value(), env);
-        }
-        else if (form == "if")
-        {
-            return eval_if(input.next()->raw_value(), env);
-        }
-        else if (form == "fn*")
-        {
-            return eval_fn(input.next()->raw_value(), env);
-        }
-        else
-        {
-            TokenVector result = eval_ast(input, env);
-            if (result.empty())
+            if (form == "def!")
             {
+                TokenVector temp;
+                temp.append(input.next()->raw_value());
+                auto result = eval_def(temp, env);
                 return result;
+            }
+            else if (form == "let*")
+            {
+                TokenVector temp;
+                temp.append(input.next()->raw_value());
+                input = eval_let(temp, env);
+            }
+            else if (form == "do")
+            {
+                TokenVector temp;
+                temp.append(input.next()->raw_value());
+                input = eval_do(temp, env);
+            }
+            else if (form == "if")
+            {
+                TokenVector temp;
+                temp.append(input.next()->raw_value());
+                input = eval_if(temp, env);
+            }
+            else if (form == "fn*")
+            {
+                TokenVector source;
+                source.append(input.next()->raw_value());
+
+                auto discard = source.next();    // discard the 'fn*' symbol
+
+                TokenVector parameters;
+                parameters.append(source.next());
+
+                TokenVector body;
+                body = source.rest();
+                std::shared_ptr<Environment> parent = std::make_shared<Environment>(env);
+
+                TokenVector procedure;
+                procedure.append(std::make_shared<MalProcedure>(body, parameters, parent, parameters.size()));
+                return procedure;
             }
             else
             {
-                if (type == MAL_LIST)
-                {
-                    if (result.peek() == nullptr || result.peek()->raw_value().empty())
-                    {
-                        throw new ProcedureNotFoundException("");
-                    }
-                    else
-                    {
-                        EnvPtr fn = nullptr;
-                        auto p_type = result.car()->type();
-
-                        if (p_type == MAL_SYMBOL)
-                        {
-                            fn = env.get(result.car());
-                        }
-                        else if (p_type == MAL_PRIMITIVE)
-                        {
-                            auto procedure = result.next()->raw_value().car();
-                            fn = env.get(procedure);
-                        }
-                        else if (p_type == MAL_PROCEDURE)
-                        {
-                            auto procedure = result.next();
-                            TokenVector raw_args;
-                            raw_args.append(result.cdr());
-                            auto cooked_args = EVAL(raw_args, env);
-                            TokenVector args;
-                            args.append(std::make_shared<MalList>(cooked_args));
-
-                            // WARNING: This function uses downcasting of a pointer from it's parent class to the
-                            // actual subclass. This is VERY questionable, and if possible a better solution 
-                            // should be found!
-                            return (dynamic_cast<MalProcedure*>(&(*procedure)))->fn(args);
-                        }
-                        if (fn == nullptr)
-                        {
-                            throw new ProcedureNotFoundException(result.car()->value());
-                        }
-
-                        return apply_fn(fn, result.cdr());
-                    }
-                }
-                else
+                TokenVector result = eval_ast(input, env);
+                if (result.empty())
                 {
                     return result;
                 }
+                else
+                {
+                    if (type == MAL_LIST)
+                    {
+                        if (result.peek() == nullptr || result.peek()->raw_value().empty())
+                        {
+                            throw new ProcedureNotFoundException("");
+                        }
+                        else
+                        {
+                            EnvSymbolPtr fn = nullptr;
+                            auto p_type = result.car()->type();
+
+                            if (p_type == MAL_SYMBOL)
+                            {
+                                std::cout << "mal symbol" << std::endl;
+                                fn = env.get(result.car());
+                            }
+                            else if (p_type == MAL_PRIMITIVE)
+                            {
+                                std::cout << "mal Primitive" << std::endl;
+                                auto procedure = result.next()->raw_value().car();
+                                fn = env.get(procedure);
+                                return apply_fn(fn, result.cdr());
+                            }
+                            else if (p_type == MAL_PROCEDURE)
+                            {
+                                std::cout << "mal Procedure" << std::endl;
+                                auto procedure = result.next();
+                                TokenVector raw_args;
+                                raw_args.append(result.cdr());
+                                auto cooked_args = EVAL(raw_args, env);
+                                TokenVector args;
+                                args.append(std::make_shared<MalList>(cooked_args));
+
+                                // WARNING: This function uses downcasting of a pointer from it's parent class to 
+                                // the actual subclass. This is VERY questionable, and if possible a better 
+                                // solution should be found!
+                                auto proc_frame = (dynamic_cast<MalProcedure*>(&(*procedure)));
+                                input = proc_frame->ast();
+                                env = Environment(proc_frame->parent(), proc_frame->params(), args);
+                            }
+                            if (fn == nullptr)
+                            {
+                                throw new ProcedureNotFoundException(result.car()->value());
+                            }
+                        }
+                    }
+                    else
+                    {
+                        return result;
+                    }
+                }
             }
         }
-    }
-    else
-    {
-        return input;
+        else
+        {
+            return input;
+        }
     }
 }
 
 
-TokenVector eval_ast(TokenVector input, Environment& env)
+TokenVector eval_ast(TokenVector& input, Environment& env)
 {
     TokenVector result;
     MalPtr peek = input.peek();
@@ -134,6 +169,7 @@ TokenVector eval_ast(TokenVector input, Environment& env)
     {
         case MAL_SYMBOL:
             {
+                std::cout << "Symbol" << std::endl;
                 MalPtr symbol = input.next();
 
                 if (symbol == nullptr)
@@ -141,24 +177,31 @@ TokenVector eval_ast(TokenVector input, Environment& env)
                     throw new SymbolNotInitializedException("");
                 }
 
-                EnvPtr p = env.get(symbol);
+                EnvSymbolPtr p = env.get(symbol);
 
                 if (p == nullptr)
                 {
+                    std::cout << "null pointer" << std::endl;
                     throw new SymbolNotInitializedException(symbol->value());
                 }
 
                 if (p->type() == ENV_PRIMITIVE)
                 {
+                    std::cout << "Env Primitive" << std::endl;
                     MalPtr prim = std::make_shared<MalPrimitive>(p->symbol().value(), p->arity());
                     result.append(prim);
                 }
                 else if (p->type() == ENV_PROCEDURE)
                 {
-                    result.append((dynamic_cast<Env_Procedure*>(&(*p)))->fn());
+                    std::cout << "Env Procedure" << std::endl;
+                    auto proc = (dynamic_cast<Env_Procedure*>(&(*p)))->proc();
+                    auto procedure_frame = dynamic_cast<MalProcedure*>(&(*proc));
+                    env = procedure_frame->parent();
+                    input = procedure_frame->ast();
                 }
                 else if (p->type() == ENV_SYMBOL)
                 {
+                    std::cout << "Env Symbol " << p->value()->value() << std::endl;
                     result.append(p->value());
                 }
                 else
@@ -198,7 +241,12 @@ TokenVector eval_ast(TokenVector input, Environment& env)
             }
             break;
         case MAL_QUASIQUOTE:
-            return eval_quasiquoted(input.next()->raw_value(), env);
+        {
+            input.next()->raw_value();
+            TokenVector temp;
+            temp.append(input.next()->raw_value());
+            return eval_quasiquoted(temp, env);
+        }
             break;
         default:
             return input;
@@ -206,7 +254,7 @@ TokenVector eval_ast(TokenVector input, Environment& env)
 }
 
 
-TokenVector eval_vec(TokenVector input, Environment& env)
+TokenVector eval_vec(TokenVector& input, Environment& env)
 {
     TokenVector temp, elements;
     for (MalPtr elem = input.next(); elem != nullptr; elem = input.next())
@@ -222,7 +270,7 @@ TokenVector eval_vec(TokenVector input, Environment& env)
     return result;
 }
 
-TokenVector eval_hashmap(HashMapInternal input, Environment& env)
+TokenVector eval_hashmap(HashMapInternal& input, Environment& env)
 {
     HashMapInternal resultant;
 
@@ -241,7 +289,7 @@ TokenVector eval_hashmap(HashMapInternal input, Environment& env)
 }
 
 
-TokenVector eval_def(TokenVector input, Environment& env)
+TokenVector eval_def(TokenVector& input, Environment& env)
 {
     if (input.next()->value() == "def!")
     {
@@ -293,7 +341,7 @@ TokenVector eval_def(TokenVector input, Environment& env)
     }
 }
 
-TokenVector eval_let(TokenVector input, Environment& env)
+TokenVector eval_let(TokenVector& input, Environment& env)
 {
     if (input.next()->value() == "let*")
     {
@@ -354,7 +402,12 @@ TokenVector eval_let(TokenVector input, Environment& env)
                 TokenVector elem_val;
                 elem_val.append(element);
                 final_value.append(EVAL(elem_val, current_env));
+                if (input.peek() != nullptr)
+                {
+                    final_value = EVAL(final_value, env);
+                }
             }
+            env = current_env;
 
             return final_value;
         }
@@ -372,7 +425,7 @@ TokenVector eval_let(TokenVector input, Environment& env)
 
 
 
-TokenVector eval_quasiquoted(TokenVector input, Environment env, bool islist)
+TokenVector eval_quasiquoted(TokenVector& input, Environment& env, bool islist)
 {
     TokenVector elements, result;
 
@@ -380,12 +433,16 @@ TokenVector eval_quasiquoted(TokenVector input, Environment env, bool islist)
     {
         if (elem->type() == MAL_LIST)
         {
-            elements.append(eval_quasiquoted(elem->raw_value(), env, true));
+            TokenVector temp;
+            temp.append(elem->raw_value());
+            elements.append(eval_quasiquoted(temp, env, true));
         }
 
         else if(elem->type() == MAL_UNQUOTE)
         {
-            elements.append(eval_ast(elem->raw_value(), env));
+            TokenVector temp;
+            temp.append(elem->raw_value());
+            elements.append(eval_ast(temp, env));
         }
         else
         {
@@ -404,7 +461,7 @@ TokenVector eval_quasiquoted(TokenVector input, Environment env, bool islist)
 }
 
 
-TokenVector eval_do(TokenVector input, Environment& env)
+TokenVector eval_do(TokenVector& input, Environment& env)
 {
     auto discard = input.next();       // discard the 'do' symbol
     TokenVector final_value;
@@ -412,13 +469,17 @@ TokenVector eval_do(TokenVector input, Environment& env)
     {
         final_value.clear();
         final_value.append(element);
-        final_value = EVAL(final_value, env);
+        if (input.peek() != nullptr)
+        {
+            final_value = EVAL(final_value, env);
+        }
     }
+
     return final_value;
 }
 
 
-TokenVector eval_if(TokenVector input, Environment& env)
+TokenVector eval_if(TokenVector& input, Environment& env)
 {
     auto discard = input.next();    // discard the 'if' symbol
     TokenVector test;
@@ -429,7 +490,7 @@ TokenVector eval_if(TokenVector input, Environment& env)
     {
         TokenVector temp;
         temp.append(input.next());
-        return EVAL(temp, env);
+        return temp;
     }
     else
     {
@@ -444,35 +505,38 @@ TokenVector eval_if(TokenVector input, Environment& env)
         {
             TokenVector temp;
             temp.append(input.next());
-            return EVAL(temp, env);
+            return temp;
         }
     }
 }
 
 
-TokenVector eval_fn(TokenVector input, Environment& env)
-{
-    auto discard = input.next();    // discard the 'fn*' symbol
-    TokenVector parameters;
-    parameters.append(input.next());
-    TokenVector arguments, body;
-    body = input.rest();
-    std::shared_ptr<Environment> parent = std::make_shared<Environment>(env);
-    std::function<TokenVector(TokenVector)> closure([parameters, body, parent](TokenVector arguments)->TokenVector {
-        auto current_env = Environment(parent, parameters, arguments);
-        TokenVector final_value;
-        TokenVector input = body;
-        for (auto element = input.next(); element != nullptr; element = input.next())
-        {
-            final_value.clear();
-            final_value.append(element);
-            final_value = EVAL(final_value, current_env);
-        }
-        return final_value;
-    });
+// TokenVector eval_fn(TokenVector& input, Environment& env)
+// {
+//     auto discard = input.next();    // discard the 'fn*' symbol
+//     TokenVector parameters;
+//     parameters.append(input.next());
+//     TokenVector arguments, body;
+//     body = input.rest();
+//     std::shared_ptr<Environment> parent = std::make_shared<Environment>(env);
+//     auto current_env = Environment(parent, parameters, arguments);
 
-    TokenVector procedure;
-    procedure.append(std::make_shared<MalProcedure>(closure, parameters.size()));
+//     Procedure closure([parameters, body, parent](TokenVector arguments)->TokenVector {
+//         TokenVector final_value;
+//         TokenVector input = body;
+//         auto current_env = Environment(parent, parameters, arguments);
+//         for (auto element = input.next(); element != nullptr; element = input.next())
+//         {
+//             final_value.clear();
+//             final_value.append(element);
+//             final_value = EVAL(final_value, current_env);
+//         }
 
-    return procedure;
-}
+//         return final_value;
+//     });
+
+//     TokenVector procedure;
+//     procedure.append(std::make_shared<MalProcedure>(closure, body, parameters, current_env, parameters.size()));
+
+//     return procedure;
+// }

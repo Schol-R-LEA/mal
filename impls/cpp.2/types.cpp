@@ -43,14 +43,8 @@ size_t TokenVector::append(MalPtr token)
     if (token == nullptr)
     {
         throw new NullTokenException();
-    }
- 
+    } 
     tokens.push_back(token);
-    if (this->peek() == nullptr)
-    {
-        throw new NullTokenException();
-    }
- 
     return this->size();
 }
 
@@ -442,7 +436,7 @@ std::string MalComplex::value()
 }
 
 
-TokenVector MalProcedure::raw_value()
+TokenVector MalProcedure::fn()
 {
     TokenVector t;
     t.append(std::make_shared<MalSymbol>(repr));

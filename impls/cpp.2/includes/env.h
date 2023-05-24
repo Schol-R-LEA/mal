@@ -14,30 +14,25 @@
 #include "types.h"
 
 
-class Env_Symbol;
-
-typedef std::shared_ptr<Env_Symbol> EnvPtr;
-
-
 class Environment
 {
 public:
     Environment(std::shared_ptr<Environment> p = nullptr): parent(p) {};
     Environment(std::shared_ptr<Environment> p, TokenVector binds, TokenVector exprs);
-    void set(EnvPtr element);
+    void set(EnvSymbolPtr element);
     void set(std::string symbol, MalPtr value);
     void set(MalPtr symbol, MalPtr value);
     bool find(MalPtr p, bool local = false);
     bool find(std::string s, bool local = false);
-    EnvPtr get(MalPtr p);
-    EnvPtr get(std::string symbol);
+    EnvSymbolPtr get(MalPtr p);
+    EnvSymbolPtr get(std::string symbol);
     size_t size() const {return env.size();};
-    std::vector<EnvPtr> elements() {return env;};
+    std::vector<EnvSymbolPtr> elements() {return env;};
     std::string element_names();
 
 private:
-    std::shared_ptr<Environment> parent;
-    std::vector<EnvPtr> env;
+    EnvPtr parent;
+    std::vector<EnvSymbolPtr> env;
 };
 
 
@@ -80,8 +75,9 @@ class Env_Procedure: public Env_Symbol
 public:
     Env_Procedure(MalPtr s, MalPtr p, int a): Env_Symbol(s), procedure(p) {n_ary = a;};
     virtual Env_Element_Type type() {return ENV_PROCEDURE;};
-    virtual TokenVector apply(TokenVector& args);
-    virtual MalPtr fn() {return procedure;};
+    // virtual TokenVector apply(TokenVector& args);
+    virtual MalPtr proc() {return procedure;};
+
 protected:
     MalPtr procedure;
 };

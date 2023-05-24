@@ -20,8 +20,8 @@
 class Environment;
 class Env_Symbol;
 
-typedef std::shared_ptr<Env_Symbol> EnvPtr;
-
+typedef std::shared_ptr<Env_Symbol> EnvSymbolPtr;
+typedef std::shared_ptr<Environment> EnvPtr;
 
 enum MalTypeName
 {
@@ -426,14 +426,18 @@ protected:
 class MalProcedure: public MalSymbol
 {
 public:
-    MalProcedure(Procedure p, int a): MalSymbol("<function>"), procedure(p), arity(a) {};
+    MalProcedure(TokenVector c, TokenVector p_list, EnvPtr e, int a): MalSymbol("<function>"), code(c), param_list(p_list), parent_environment(e), arity(a) {};
     virtual MalTypeName type() {return MAL_PROCEDURE;};
-    virtual TokenVector raw_value();
-    virtual TokenVector fn(TokenVector args) {return procedure(args);};
+    virtual TokenVector fn();
+    virtual TokenVector ast() {return code;};
+    virtual TokenVector params() {return param_list;};
+    virtual EnvPtr parent() {return parent_environment;};
 protected:
-    Procedure procedure;
+    TokenVector code, param_list;
+    EnvPtr parent_environment;
     int arity;
 };
+
 
 class MalPrimitive: public MalSymbol
 {

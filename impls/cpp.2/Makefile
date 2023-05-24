@@ -38,6 +38,16 @@ $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 -o $(BIN)/step4_if_fn_do
 
 
+
+step5_tco: step5_tco.cpp lineedit reader printer types parse_numbers parse_sequences parse_reader_macros eval env apply core
+	$(CC) $(FLAGS) -I$(INC) $(LIBS) step5_tco.cpp \
+$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/types.o $(BIN)/printer.o \
+$(BIN)/parse_numbers.o $(BIN)/parse_sequences.o $(BIN)/parse_reader_macros.o \
+$(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
+-o $(BIN)/step5_tco
+
+
+
 core: core.cpp types env apply
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) -c core.cpp -o $(BIN)/core.o
 

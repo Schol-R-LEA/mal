@@ -13,7 +13,7 @@
 #include "exceptions.h"
 
 
-TokenVector apply_fn(EnvPtr fn, TokenVector args);
+TokenVector apply_fn(EnvSymbolPtr fn, TokenVector args);
 
 // TokenVector apply_fn(ProcedurePtr p, TokenVector args);
 
