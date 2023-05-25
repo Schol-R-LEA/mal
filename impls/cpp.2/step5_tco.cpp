@@ -21,6 +21,8 @@
 
 void init_prelude();
 
+Env_Frame env;
+
 TokenVector READ(std::string input)
 {
     TokenVector result;
@@ -38,7 +40,7 @@ std::string rep(std::string input)
 {
     TokenVector temp;
     temp.append(READ(input));
-    return PRINT(EVAL(temp, repl_env));
+    return PRINT(EVAL(temp, env));
 }
 
 
@@ -191,6 +193,7 @@ void init_prelude()
         std::string procedure = buff;
         TokenVector input;
         input.append(READ(procedure));
-        EVAL(input, repl_env);
+        env.push(std::make_shared<Environment>(repl_env));
+        EVAL(input, env);
     }
 }

@@ -11,15 +11,15 @@
 #include "types.h"
 
 
-TokenVector EVAL(TokenVector& input, Environment& env);
-TokenVector eval_ast(TokenVector& input, Environment& env);
-TokenVector eval_vec(TokenVector& input, Environment& env);
-TokenVector eval_hashmap(HashMapInternal& input, Environment& env);
-TokenVector eval_def(TokenVector& input, Environment& env);
-TokenVector eval_let(TokenVector& input, Environment& env);
-TokenVector eval_do(TokenVector& input, Environment& env);
-TokenVector eval_if(TokenVector& input, Environment& env);
-TokenVector eval_fn(TokenVector& input, Environment& env);
-TokenVector eval_quasiquoted(TokenVector& input, Environment& env, bool islist = false);
+TokenVector EVAL(TokenVector& input, Env_Frame& parent_env);
+TokenVector eval_ast(TokenVector& input, Env_Frame& env);
+TokenVector eval_vec(TokenVector& input, Env_Frame& env);
+TokenVector eval_hashmap(HashMapInternal& input, Env_Frame& env);
+TokenVector eval_def(TokenVector& input, Env_Frame& env);
+TokenVector eval_let(TokenVector& input, Env_Frame& env);
+TokenVector eval_do(TokenVector& input, Env_Frame& env);
+TokenVector eval_if(TokenVector& input, Env_Frame& env);
+TokenVector eval_fn(TokenVector& input, Env_Frame& env);
+TokenVector eval_quasiquoted(TokenVector& input, Env_Frame& env, bool islist = false);
 
 #endif

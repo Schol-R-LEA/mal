@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <stack>
 #include <unordered_map>
 #include <gmpxx.h>
 #include "exceptions.h"
@@ -17,9 +18,10 @@
 #include "eval.h"
 
 
-TokenVector EVAL(TokenVector& input, Environment& env)
+TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
 {
-    Environment global_env = env;
+    Env_Frame env = parent_env;
+
     while (true)
     {
         if (input.peek() == nullptr)
@@ -28,6 +30,7 @@ TokenVector EVAL(TokenVector& input, Environment& env)
         }
         if (input.empty())
         {
+            env.pop();
             return input;
         }
 
@@ -45,7 +48,6 @@ TokenVector EVAL(TokenVector& input, Environment& env)
                 TokenVector temp;
                 temp.append(input.next()->raw_value());
                 auto result = eval_def(temp, env);
-                env = global_env;
                 return result;
             }
             else if (form == "let*")
@@ -78,7 +80,8 @@ TokenVector EVAL(TokenVector& input, Environment& env)
 
                 TokenVector body;
                 body = source.rest();
-                std::shared_ptr<Environment> parent = std::make_shared<Environment>(env);
+                Environment curr_env = env.top();
+                auto parent = std::make_shared<Environment>(curr_env);
 
                 TokenVector procedure;
                 procedure.append(std::make_shared<MalProcedure>(body, parameters, parent, parameters.size()));
@@ -106,12 +109,12 @@ TokenVector EVAL(TokenVector& input, Environment& env)
 
                             if (p_type == MAL_SYMBOL)
                             {
-                                fn = env.get(result.car());
+                                fn = env.top()->get(result.car());
                             }
                             else if (p_type == MAL_PRIMITIVE)
                             {
                                 auto procedure = result.next()->raw_value().car();
-                                fn = env.get(procedure);
+                                fn = env.top()->get(procedure);
                                 return apply_fn(fn, result.cdr());
                             }
                             else if (p_type == MAL_PROCEDURE)
@@ -128,13 +131,14 @@ TokenVector EVAL(TokenVector& input, Environment& env)
                                 // solution should be found!
                                 auto proc_frame = (dynamic_cast<MalProcedure*>(&(*procedure)));
                                 input = proc_frame->ast();
-                                env = Environment(proc_frame->parent(), proc_frame->params(), args);
+                                auto new_env = Environment(proc_frame->parent(), proc_frame->params(), args);
+                                env.push(std::make_shared<Environment>(new_env));
                             }
                         }
                     }
                     else
                     {
-                        env = global_env;
+                        env.pop();
                         return result;
                     }
                 }
@@ -142,14 +146,14 @@ TokenVector EVAL(TokenVector& input, Environment& env)
         }
         else
         {
-            env = global_env;
+            env.pop();
             return input;
         }
     }
 }
 
 
-TokenVector eval_ast(TokenVector& input, Environment& env)
+TokenVector eval_ast(TokenVector& input, Env_Frame& env)
 {
     TokenVector result;
     MalPtr peek = input.peek();
@@ -172,7 +176,7 @@ TokenVector eval_ast(TokenVector& input, Environment& env)
                     throw new SymbolNotInitializedException("");
                 }
 
-                EnvSymbolPtr p = env.get(symbol);
+                EnvSymbolPtr p = env.top()->get(symbol);
 
                 if (p == nullptr)
                 {
@@ -188,7 +192,8 @@ TokenVector eval_ast(TokenVector& input, Environment& env)
                 {
                     auto proc = (dynamic_cast<Env_Procedure*>(&(*p)))->proc();
                     auto procedure_frame = dynamic_cast<MalProcedure*>(&(*proc));
-                    env = procedure_frame->parent();
+                    auto proc_env = procedure_frame->parent();
+                    env.push(proc_env);
                     input = procedure_frame->ast();
                 }
                 else if (p->type() == ENV_SYMBOL)
@@ -245,7 +250,7 @@ TokenVector eval_ast(TokenVector& input, Environment& env)
 }
 
 
-TokenVector eval_vec(TokenVector& input, Environment& env)
+TokenVector eval_vec(TokenVector& input, Env_Frame& env)
 {
     TokenVector temp, elements;
     for (MalPtr elem = input.next(); elem != nullptr; elem = input.next())
@@ -261,7 +266,7 @@ TokenVector eval_vec(TokenVector& input, Environment& env)
     return result;
 }
 
-TokenVector eval_hashmap(HashMapInternal& input, Environment& env)
+TokenVector eval_hashmap(HashMapInternal& input, Env_Frame& env)
 {
     HashMapInternal resultant;
 
@@ -280,7 +285,7 @@ TokenVector eval_hashmap(HashMapInternal& input, Environment& env)
 }
 
 
-TokenVector eval_def(TokenVector& input, Environment& env)
+TokenVector eval_def(TokenVector& input, Env_Frame& env)
 {
     if (input.next()->value() == "def!")
     {
@@ -291,9 +296,9 @@ TokenVector eval_def(TokenVector& input, Environment& env)
             throw new InvalidDefineException(input.values());
         }
 
-        if (env.find(symbol, true))
+        if (env.top()->find(symbol, true))
         {
-            auto sym_ptr = env.get(symbol);    // get the pointer to the local symbol
+            auto sym_ptr = env.top()->get(symbol);    // get the pointer to the local symbol
             auto val_ptr = input.next();
             TokenVector val_vec;
             val_vec.append(val_ptr);
@@ -318,11 +323,11 @@ TokenVector eval_def(TokenVector& input, Environment& env)
             TokenVector val_vec;
             val_vec.append(val_ptr);
             auto value = EVAL(val_vec, env);
-            env.set(symbol, value.peek());
-            auto sym_ptr = env.get(symbol); // get the pointer to the local symbol
+            env.top()->set(symbol, value.peek());
+            auto sym_ptr = env.top()->get(symbol); // get the pointer to the local symbol
             sym_ptr->set(value.next());
             TokenVector result;
-            result.append(env.get(symbol)->value());
+            result.append(env.top()->get(symbol)->value());
             return result;
         }
     }
@@ -332,11 +337,12 @@ TokenVector eval_def(TokenVector& input, Environment& env)
     }
 }
 
-TokenVector eval_let(TokenVector& input, Environment& env)
+TokenVector eval_let(TokenVector& input, Env_Frame& env)
 {
     if (input.next()->value() == "let*")
     {
-        Environment current_env(std::make_shared<Environment>(env));
+        EnvPtr current_env(std::make_shared<Environment>(env.top()));
+        env.push(current_env);
 
         auto var_head = input.next();
         if (var_head->type() == MAL_LIST || var_head->type() == MAL_VECTOR)
@@ -355,7 +361,7 @@ TokenVector eval_let(TokenVector& input, Environment& env)
                 else
                 {
                     auto placeholder = std::make_shared<MalNull>();
-                    current_env.set(symbol, placeholder);      // pre-initialize symbol in environment
+                    env.top()->set(symbol, placeholder);      // pre-initialize symbol in environment
                     pre_list.next();
                 }
             }
@@ -376,11 +382,11 @@ TokenVector eval_let(TokenVector& input, Environment& env)
                         throw new InvalidLetException(input.values());
                     }
 
-                    auto sym_ptr = current_env.get(symbol);    // and retrieve the pointer to the env entry
+                    auto sym_ptr = env.top()->get(symbol);    // and retrieve the pointer to the env entry
 
                     TokenVector val_vec;
                     val_vec.append(val_ptr);
-                    auto value = EVAL(val_vec, current_env);
+                    auto value = EVAL(val_vec, env);
 
                     sym_ptr->set(value.next());
                 }
@@ -392,13 +398,12 @@ TokenVector eval_let(TokenVector& input, Environment& env)
                 final_value.clear();
                 TokenVector elem_val;
                 elem_val.append(element);
-                final_value.append(EVAL(elem_val, current_env));
+                final_value.append(EVAL(elem_val, env));
                 if (input.peek() != nullptr)
                 {
                     final_value = EVAL(final_value, env);
                 }
             }
-            env = current_env;
 
             return final_value;
         }
@@ -416,7 +421,7 @@ TokenVector eval_let(TokenVector& input, Environment& env)
 
 
 
-TokenVector eval_quasiquoted(TokenVector& input, Environment& env, bool islist)
+TokenVector eval_quasiquoted(TokenVector& input, Env_Frame& env, bool islist)
 {
     TokenVector elements, result;
 
@@ -452,7 +457,7 @@ TokenVector eval_quasiquoted(TokenVector& input, Environment& env, bool islist)
 }
 
 
-TokenVector eval_do(TokenVector& input, Environment& env)
+TokenVector eval_do(TokenVector& input, Env_Frame& env)
 {
     auto discard = input.next();       // discard the 'do' symbol
     TokenVector final_value;
@@ -470,7 +475,7 @@ TokenVector eval_do(TokenVector& input, Environment& env)
 }
 
 
-TokenVector eval_if(TokenVector& input, Environment& env)
+TokenVector eval_if(TokenVector& input, Env_Frame& env)
 {
     auto discard = input.next();    // discard the 'if' symbol
     TokenVector test;
@@ -502,7 +507,7 @@ TokenVector eval_if(TokenVector& input, Environment& env)
 }
 
 
-// TokenVector eval_fn(TokenVector& input, Environment& env)
+// TokenVector eval_fn(TokenVector& input, Env_Frame& env)
 // {
 //     auto discard = input.next();    // discard the 'fn*' symbol
 //     TokenVector parameters;

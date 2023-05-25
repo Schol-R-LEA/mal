@@ -8,6 +8,7 @@
 
 
 #include <functional>
+#include <stack>
 #include <typeinfo>
 #include <cstdarg>
 #include <gmpxx.h>
@@ -35,7 +36,7 @@ private:
     std::vector<EnvSymbolPtr> env;
 };
 
-
+typedef std::stack<EnvPtr> Env_Frame;
 
 enum Env_Element_Type {ENV_SYMBOL, ENV_PRIMITIVE, ENV_PROCEDURE};
 
