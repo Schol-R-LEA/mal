@@ -10,10 +10,19 @@
 #include "parse_sequences.h"
 
 
-MalPtr read_list(std::string input_stream)
+void read_list(std::string input_stream, TokenVector& tokens)
 {
     paren_count++;
-    return tokenize(input_stream);
+    TokenVector ml = tokenize(input_stream);
+
+    if (ml.values() == "")
+    {
+        tokens.append(std::make_shared<MalNull>());
+    }
+    else
+    {
+        tokens.append(std::make_shared<MalList>(ml));
+    }
 }
 
 
@@ -30,11 +39,11 @@ void close_list()
 }
 
 
-MalPtr read_vector(std::string input_stream)
+void read_vector(std::string input_stream, TokenVector& tokens)
 {
     square_bracket_count++;
 
-    std::make_shared<MalVector>(tokenize(input_stream)));
+    tokens.append(std::make_shared<MalVector>(tokenize(input_stream)));
 }
 
 
@@ -51,11 +60,11 @@ void close_vector()
 }
 
 
-MalPtr read_hashmap(std::string input_stream)
+void read_hashmap(std::string input_stream, TokenVector& tokens)
 {
     hm_count++;
 
-    std::make_shared<MalHashmap>(tokenize(input_stream));
+    tokens.append(std::make_shared<MalHashmap>(tokenize(input_stream)));
 }
 
 

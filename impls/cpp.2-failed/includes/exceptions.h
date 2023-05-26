@@ -3,57 +3,45 @@
 
 #include <string>
 
-
-
-class InvalidConversionException: public std::exception
-{
-public:
-    InvalidConversionException(std::string s, std::string c): source(s), conversion(c) {};
-    virtual const char* what() const noexcept { return ("Cannot convert " + source + " to " + conversion).c_str(); };
-protected:
-    std::string source, conversion;
-};
-
-
-class UnbalancedParenthesesException: public std::exception
+class UnbalancedParenthesesException
 {
 public:
     UnbalancedParenthesesException() {};
 };
 
 
-class UnbalancedVectorException: public std::exception
+class UnbalancedVectorException
 {
 public:
     UnbalancedVectorException() {};
 };
 
 
-class UnbalancedStringException: public std::exception
+class UnbalancedStringException
 {
 public:
     UnbalancedStringException() {};
 };
 
 
-class UnbalancedHashmapException: public std::exception
+class UnbalancedHashmapException
 {
 public:
     UnbalancedHashmapException() {};
 };
 
 
-class IncompleteComplexNumberException: public std::exception
+class IncompleteComplexNumberException
 {
 public:
     IncompleteComplexNumberException() {};
 };
 
-class InvalidNumberException: public std::exception
+class InvalidNumberException
 {
 public:
     InvalidNumberException(std::string v): number_value(v) {};
-    virtual const char* what() const noexcept { return number_value.c_str(); };
+    std::string value() const { return number_value; };
 protected:
     std::string number_value;
 };
@@ -82,54 +70,54 @@ public:
     InvalidComplexNumberException(std::string v): InvalidNumberException(v) {};
 };
 
-class InvalidHashmapException: public std::exception
+class InvalidHashmapException
 {
 public:
     InvalidHashmapException() {};
 };
 
 
-class IncompleteEscapeException: public std::exception
+class IncompleteEscapeException
 {
 public:
     IncompleteEscapeException() {};
 };
 
 
-class InvalidMetaException: public std::exception
+class InvalidMetaException
 {
 public:
     InvalidMetaException() {};
 };
 
 
-class InvalidEnvironmentSymbolException: public std::exception
+class InvalidEnvironmentSymbolException
 {
 public:
     InvalidEnvironmentSymbolException(std::string sym): symbol_value(sym) {};
-    virtual const char* what() const noexcept { return symbol_value.c_str(); };
+    std::string value() const { return symbol_value; };
 protected:
     std::string symbol_value;
 };
 
-class InvalidPrimitiveException: public std::exception
+class InvalidPrimitiveException
 {
 public:
     InvalidPrimitiveException() {};
 };
 
 
-class InvalidFunctionArgumentException: public std::exception
+class InvalidFunctionArgumentException
 {
 public:
     InvalidFunctionArgumentException(std::string sym): symbol_value(sym) {};
-    virtual const char* what() const noexcept { return symbol_value.c_str(); };
+    std::string value() const { return symbol_value; };
 protected:
     std::string symbol_value;
 };
 
 
-class MissingFunctionArgumentException: public std::exception
+class MissingFunctionArgumentException
 {
 public:
     MissingFunctionArgumentException() {};
@@ -137,95 +125,95 @@ public:
 
 
 
-class TooManyInputsException: public std::exception
+class TooManyInputsException
 {
 public:
     TooManyInputsException() {};
 };
 
 
-class ArityMismatchException: public std::exception
+class ArityMismatchException
 {
 public:
     ArityMismatchException() {};
 };
 
 
-class ApplyingNonFunctionException: public std::exception
+class ApplyingNonFunctionException
 {
 public:
     ApplyingNonFunctionException(std::string sym): symbol_value(sym) {};
-    virtual const char* what() const noexcept { return symbol_value.c_str(); };
+    std::string value() const { return symbol_value; };
 protected:
     std::string symbol_value;
 };
 
 
-class ProcedureNotFoundException: public std::exception
+class ProcedureNotFoundException
 {
 public:
     ProcedureNotFoundException(std::string sym): symbol_value(sym) {};
-    virtual const char* what() const noexcept { return symbol_value.c_str(); };
+    std::string value() const { return symbol_value; };
 protected:
     std::string symbol_value;
 };
 
 
-class SymbolNotInitializedException: public std::exception
+class SymbolNotInitializedException
 {
 public:
     SymbolNotInitializedException(std::string sym): symbol_value(sym) {};
-    virtual const char* what() const noexcept { return symbol_value.c_str(); };
+    std::string value() const { return symbol_value; };
 protected:
     std::string symbol_value;
 };
 
 
-class InvalidDefineException: public std::exception
+class InvalidDefineException
 {
 public:
     InvalidDefineException(std::string sym): symbol_value(sym) {};
-    virtual const char* what() const noexcept { return symbol_value.c_str(); };
+    std::string value() const { return symbol_value; };
 protected:
     std::string symbol_value;
 };
 
 
-class InvalidLetException: public std::exception
+class InvalidLetException
 {
 public:
     InvalidLetException(std::string sym): symbol_value(sym) {};
-    virtual const char* what() const noexcept { return symbol_value.c_str(); };
+    std::string value() const { return symbol_value; };
 protected:
     std::string symbol_value;
 };
 
 
-class UnequalBindExprListsException: public std::exception
+class UnequalBindExprListsException
 {
 public:
     UnequalBindExprListsException(std::string b, std::string e): binds(b), exprs(e) {};
-    virtual const char* what() const noexcept { return (binds + ": " + exprs).c_str(); };
+    std::string value() const { return binds + ": " + exprs; };
 protected:
     std::string binds, exprs;
 };
 
 
-class InvalidBindExprListsException: public std::exception
+class InvalidBindExprListsException
 {
 public:
     InvalidBindExprListsException(std::string b, std::string e): binds(b), exprs(e) {};
-    virtual const char* what() const noexcept { return (binds + ": " + exprs).c_str(); };
+    std::string value() const { return binds + ": " + exprs; };
 protected:
     std::string binds, exprs;
 };
 
 
-class NonNumericComparisonException: public std::exception
+class NonNumericComparisonException
 {
 public:
     NonNumericComparisonException(std::string b, std::string e): car(b), cdr(e) {};
-    virtual const char* what() const noexcept { return (car + ": " + cdr).c_str(); };
+    std::string value() const { return car + ": " + cdr; };
 protected:
     std::string car, cdr;
 };
@@ -233,18 +221,18 @@ protected:
 
 
 
-class NullTokenException: public std::exception
+class NullTokenException
 {
 public:
     NullTokenException() {};
 };
 
 
-class InvalidConsPairException: public std::exception
+class InvalidConsPairException
 {
 public:
     InvalidConsPairException(std::string p): pair(p) {};
-    virtual const char* what() const noexcept { return pair.c_str(); };
+    std::string value() const { return pair; };
 protected:
     std::string pair;
 };

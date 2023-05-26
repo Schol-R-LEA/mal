@@ -7,7 +7,6 @@
    'LICENSE' in the implementation subdirectory.
 */
 
-
 #include <complex>
 #include <functional>
 #include <memory>
@@ -15,6 +14,7 @@
 #include <vector>
 #include <unordered_map>
 #include <gmpxx.h>
+#include "exceptions.h"
 
 
 class Environment;
@@ -23,431 +23,382 @@ class Env_Symbol;
 typedef std::shared_ptr<Env_Symbol> EnvSymbolPtr;
 typedef std::shared_ptr<Environment> EnvPtr;
 
-enum MalTypeName
+
+enum MalType
 {
-    MAL_TYPE, MAL_ATOM, MAL_SYMBOL, MAL_KEYWORD, MAL_REST_ARG,
-    MAL_STRING, MAL_CHAR, MAL_BOOLEAN,
-    MAL_LIST, MAL_NULL, MAL_NIL, MAL_PRINT_NIL, MAL_VECTOR, MAL_HASHMAP,
+    MAL_OBJECT,
+    MAL_ATOM, MAL_SYMBOL, MAL_KEYWORD,
+    MAL_STRING, MAL_BOOLEAN,
+    MAL_COLLECTION, MAL_PAIR, MAL_VECTOR, MAL_HASHMAP,
+    Mal_NUMBER, MAL_INTEGER, MAL_FRACTIONAL, MAL_RATIONAL, MAL_COMPLEX,
+    MAL_PROCEDURE, MAL_PRIMITIVE, MAL_REST_ARG,
     MAL_PERIOD, MAL_COMMA,
-    MAL_READER_MACRO, MAL_DEREF, MAL_UNQUOTE, MAL_SPLICE_UNQUOTE,
-    MAL_QUOTE, MAL_QUASIQUOTE, MAL_META,
-    MAL_NUMBER, MAL_SYSTEM_INTEGER, MAL_BINARY, MAL_OCTAL, MAL_HEX,
-    MAL_INTEGER, MAL_FRACTIONAL, MAL_RATIONAL, MAL_COMPLEX,
-    MAL_PROCEDURE, MAL_PRIMITIVE
+    MAL_READER_MACRO, MAL_QUOTE, MAL_QUASIQUOTE,
+    MAL_UNQUOTE, MAL_SPLICE_UNQUOTE, MAL_DEREF,
+    MAL_META
 };
 
+extern std::string mal_type_name[];
 
 
-class MalType;
+class MalObject;
+class MalPair;
+class MalVector;
+class MalHashmap;
+class MalAtom;
+class MalBoolean;
+class MalSymbol;
+class MalKeyword;
+class MalString;
+class MalInteger;
+class MalProcedure;
 
-typedef std::shared_ptr<MalType> MalPtr;
+typedef std::shared_ptr<MalObject> MalPtr;
+typedef std::shared_ptr<MalPair> PairPtr;
+
+// types for the internal representations for collection classes
+typedef std::vector<MalPtr> InternalVector;
+
+typedef std::unordered_map<std::string, MalPtr> InternalHashmap;
+
+
+// Complex type
+typedef std::complex<mpf_class> complex_mpf;
 
 
 
-class TokenVector
+class MalObject
 {
 public:
-    TokenVector(): current_token(0) {tokens.reserve(65535);};
-    TokenVector(const TokenVector& t);
-    const TokenVector& operator=(const TokenVector& t);
-    size_t size() const {return tokens.size();};
-    size_t capacity() const {return tokens.capacity();};
-    size_t append(MalPtr token);
-    size_t append(const TokenVector& t);
-    std::string values();
-    std::string values_remainder();
-    std::string types();
-    MalPtr next();
-    MalPtr peek();
-    MalPtr car() {return tokens[0];};
-    TokenVector cdr();
-    TokenVector rest();
-    void clear() {tokens.clear(); current_token = 0;};
-    bool empty() {return tokens.size() == 0;};
-    MalPtr operator[](unsigned int i);
+    MalObject(MalType type): m_type(type) {};
+    virtual std::string to_str() {return "";};
+    MalType type() {return m_type;};
+    std::string type_name() {return mal_type_name[m_type];};
+    virtual size_t size() {return 1;};
 
-private:
-    std::vector<MalPtr> tokens;
-    unsigned int current_token;
-};
+    // type predicates
+    virtual bool is_atom() {return false;};
+    virtual bool is_symbol() {return false;};
+    virtual bool is_keyword() {return false;};
+    virtual bool is_string() {return false;};
+    virtual bool is_boolean() {return false;};
+    virtual bool is_collection() {return false;};
+    virtual bool is_null() {return false;};
+    virtual bool is_pair() {return false;};
+    virtual bool is_list() {return false;};
+    virtual bool is_vector() {return false;};
+    virtual bool is_hashmap() {return false;};
+    virtual bool is_number() {return false;};
+    virtual bool is_integer() {return false;};
+    virtual bool is_rational() {return false;};
+    virtual bool is_fractional() {return false;};
+    virtual bool is_complex() {return false;};
+    virtual bool is_procedure() {return false;};
+    virtual bool is_syntax() {return false;};
 
-
-inline bool is_mal_numeric(MalTypeName type)
-{
-    return (type == MAL_NUMBER
-            || type == MAL_INTEGER
-            || type == MAL_SYSTEM_INTEGER
-            || type == MAL_BINARY
-            || type == MAL_OCTAL
-            || type == MAL_HEX
-            || type == MAL_FRACTIONAL
-            || type == MAL_RATIONAL
-            || type == MAL_COMPLEX);
-}
-
-inline bool is_mal_container(MalTypeName type)
-{
-    return (type == MAL_LIST
-            || type == MAL_NULL
-            || type == MAL_VECTOR
-            || type == MAL_HASHMAP);
-}
-
-
-inline bool is_mal_reader_macro(MalTypeName type)
-{
-    return (type == MAL_READER_MACRO
-            || type == MAL_QUOTE
-            || type == MAL_QUASIQUOTE
-            || type == MAL_UNQUOTE
-            || type == MAL_SPLICE_UNQUOTE
-            || type == MAL_DEREF
-            || type == MAL_META
-            );
-}
-
-
-
-typedef std::unordered_map<std::string, std::shared_ptr<MalType> > HashMapInternal;
-
-
-typedef std::function<TokenVector(TokenVector)> Procedure;
-typedef std::shared_ptr<Procedure> ProcedurePtr;
-
-
-
-class MalType
-{
-public:
-    MalType(std::string const r):repr(r) {};
-    virtual std::string value() {return repr;};
-    virtual MalTypeName type() {return MAL_TYPE;};
-    virtual TokenVector raw_value() {TokenVector t, &r = t; return r;};
+    // return values of the subclasses
+    virtual std::string as_string() {throw InvalidConversionException(mal_type_name[this->m_type], mal_type_name[MAL_STRING]); return "";};
+    virtual std::string as_keyword() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_KEYWORD]); return "";};
+    virtual MalPtr as_symbol() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_SYMBOL]); return nullptr;};
+    virtual std::shared_ptr<MalPair> as_pair() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_PAIR]); return nullptr;};
+    virtual InternalVector as_vector() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_VECTOR]); InternalVector v; return v;};
+    virtual InternalHashmap as_hashmap() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_HASHMAP]); InternalHashmap hm; return hm;};
+    virtual bool as_boolean() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_BOOLEAN]); return false;};
+    virtual mpz_class as_integer() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_INTEGER]); return 0;};
+    virtual mpq_class as_rational() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_INTEGER]); return 0;};
+    virtual mpf_class as_fractional() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_INTEGER]); return mpf_class(0);};
+    virtual complex_mpf as_complex() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_INTEGER]); return complex_mpf(0, 0);};
+    virtual MalPtr as_procedure() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_PROCEDURE]); return nullptr;};
 protected:
-    std::string repr;
-};
-
-
-class MalPeriod: public MalType
-{
-public:
-    MalPeriod(): MalType(".") {};
-    virtual MalTypeName type() {return MAL_PERIOD;};
-};
-
-class MalReaderMacro: public MalType
-{
-public:
-    MalReaderMacro(const TokenVector& l): MalType("Reader Macro"), list(l) {};
-    virtual MalTypeName type() {return MAL_READER_MACRO;};
-    virtual std::string value() {return list.values();};
-    virtual TokenVector raw_value() {return list;};
-    MalPtr operator[](unsigned int i);
-protected:
-    TokenVector list;
-};
-
-
-class MalDeref: public MalReaderMacro
-{
-public:
-    MalDeref(const TokenVector& l): MalReaderMacro(l) {};
-    virtual MalTypeName type() {return MAL_DEREF;};
-    virtual std::string value() {return "(deref " + list.values() + ')';};
-};
-
-
-class MalUnquote: public MalReaderMacro
-{
-public:
-    MalUnquote(const TokenVector& l): MalReaderMacro(l) {};
-    virtual MalTypeName type() {return MAL_UNQUOTE;};
-    virtual std::string value() {return "(unquote " + list.values() + ')';};
-};
-
-
-class MalSpliceUnquote: public MalReaderMacro
-{
-public:
-    MalSpliceUnquote(const TokenVector& l): MalReaderMacro(l) {};
-    virtual MalTypeName type() {return MAL_SPLICE_UNQUOTE;};
-    virtual std::string value() {return "(splice-unquote " + list.values() + ')';};
-};
-
-class MalQuote: public MalReaderMacro
-{
-public:
-    MalQuote(const TokenVector& l): MalReaderMacro(l) {};
-    virtual MalTypeName type() {return MAL_QUOTE;};
-    virtual std::string value() {return "(quote " + list.values() + ")";};
-};
-
-
-class MalQuasiquote: public MalReaderMacro
-{
-public:
-    MalQuasiquote(const TokenVector& l): MalReaderMacro(l) {};
-    virtual MalTypeName type() {return MAL_QUASIQUOTE;};
-    virtual std::string value() {return "(quasiquote " + list.values() + ')';};
-};
-
-class MalMeta: public MalReaderMacro
-{
-public:
-    MalMeta(const TokenVector& seq, TokenVector& arg): MalReaderMacro(arg), sequence(seq) {};
-    virtual MalTypeName type() {return MAL_META;};
-    virtual TokenVector meta_target() {return sequence;};
-    virtual TokenVector meta_arguments() {return list;};
-    virtual std::string value() {return "(with-meta " + sequence.values() + " " + list.values() + ')';};
-private:
-    TokenVector sequence;
-};
-
-
-class MalBoolean: public MalType
-{
-public:
-    MalBoolean(std::string r): MalType(r) {};
-    virtual MalTypeName type() {return MAL_BOOLEAN;};
-};
-
-
-class MalList: public MalType
-{
-public:
-    MalList() = delete;
-    MalList(std::string const r) = delete;
-    MalList(const TokenVector& l);
-    virtual std::string value() {return "(" + list.values() + ")";};
-    virtual MalTypeName type() {return MAL_LIST;};
-    virtual TokenVector raw_value() {return list;};
-private:
-    TokenVector list;
+    MalType m_type;
 };
 
 
 
-class MalNull: public MalType
+class MalAtom: public MalObject
 {
 public:
-    MalNull(): MalType("()") {};
-    MalNull(std::string n): MalType(n) {};
-    virtual MalTypeName type() {return MAL_NULL;};
-};
-
-class MalNil: public MalNull
-{
-public:
-    MalNil(): MalNull("nil") {};
-    virtual MalTypeName type() {return MAL_NIL;};
-};
-
-class MalPrintNil: public MalNull
-{
-public:
-    MalPrintNil(): MalNull("nil") {};
-    virtual MalTypeName type() {return MAL_PRINT_NIL;};
-};
-
-class MalVector: public MalType
-{
-public:
-    MalVector() = delete;
-    MalVector(std::string const r) = delete;
-    MalVector(const TokenVector& v);
-    virtual std::string value() {return "[" + vec.values() + "]";};
-    virtual MalTypeName type() {return MAL_VECTOR;};
-    virtual TokenVector raw_value() {return vec;};
-private:
-    TokenVector vec;
-};
-
-
-class MalHashmap: public MalType
-{
-public:
-    MalHashmap(TokenVector hm);
-    MalHashmap(std::unordered_map<std::string, std::shared_ptr<MalType> > hm);
-    virtual MalTypeName type() {return MAL_HASHMAP;};
-    virtual std::string value();
-    HashMapInternal internal_map() {return hashmap;};
-private:
-    HashMapInternal hashmap;
-};
-
-
-class MalAtom: public MalType
-{
-public:
-    MalAtom(std::string r): MalType(r) {};
-    virtual MalTypeName type() {return MAL_ATOM;};
+    MalAtom(MalType type): MalObject(type) {};
+    virtual bool is_atom() {return true;};
 };
 
 
 class MalSymbol: public MalAtom
 {
 public:
-    MalSymbol(): MalAtom("") {};
-    MalSymbol(std::string r): MalAtom(r) {};
-    virtual MalTypeName type() {return MAL_SYMBOL;};
+    MalSymbol(std::string sym): MalAtom(MAL_SYMBOL), m_symbol(sym) {};
+    virtual std::string to_str() {return ":" + m_symbol;};
+    virtual bool is_symbol() {return true;};
+
+protected:
+    std::string m_symbol;
 };
 
 
-class MalKeyword: public MalSymbol
+class MalKeyword: public MalAtom
 {
 public:
-    MalKeyword(std::string r): MalSymbol(r) {};
-    virtual MalTypeName type() {return MAL_KEYWORD;};
+    MalKeyword(std::string kw): MalAtom(MAL_KEYWORD), m_keyword(kw) {};
+    virtual std::string to_str() {return ":" + m_keyword;};
+    virtual bool is_keyword() {return true;};
+    virtual std::string as_keyword() {return this->to_str();};
+protected:
+    std::string m_keyword;
 };
 
-
-class MalRestArg: public MalSymbol
-{
-public:
-    MalRestArg(): MalSymbol("&") {};
-    virtual MalTypeName type() {return MAL_REST_ARG;};
-};
-
-
-class MalChar: public MalAtom
-{
-public:
-    MalChar(std::string r): MalAtom(r) {};
-    virtual MalTypeName type() {return MAL_CHAR;};
-};
 
 
 class MalString: public MalAtom
 {
 public:
-    MalString(std::string r): MalAtom(r) {};
-    virtual MalTypeName type() {return MAL_STRING;};
-    virtual std::string value() {return repr;};
+    MalString(std::string str): MalAtom(MAL_STRING), m_string(str) {};
+    virtual std::string to_str() {return m_string;};
+    virtual bool is_string() {return true;};
+    virtual std::string as_string() {return m_string;};
+protected:
+    std::string m_string;
 };
 
 
-class MalNumber: public MalAtom
+class MalBoolean: public MalAtom
 {
 public:
-    MalNumber(std::string r): MalAtom(r) {};
-    virtual MalTypeName type() {return MAL_NUMBER;};
+    MalBoolean(bool tof): MalAtom(MAL_BOOLEAN), m_boolean(tof) {};
+    virtual std::string to_str() {return m_boolean ? "true" : "false";};
+    virtual bool is_boolean() {return true;};
+protected:
+    bool m_boolean;
+};
+
+
+class MalCollection: public MalObject
+{
+public:
+    MalCollection(MalType type): MalObject(type) {};
+    virtual bool is_collection() {return true;};
+};
+
+
+class MalPair: public MalCollection
+{
+public:
+    MalPair(MalPtr car, MalPtr cdr): MalCollection(MAL_PAIR), m_car(car), m_cdr(cdr) {};
+    virtual std::string to_str();
+    virtual bool is_null() {return (m_car == nullptr && m_cdr == nullptr);};
+    virtual bool is_pair() {return true;};
+    virtual bool is_list() {return (m_cdr == nullptr || m_cdr->is_pair());};
+    virtual size_t size();
+    virtual operator[](size_t index);
+protected:
+    MalPtr m_car, m_cdr;
+};
+
+
+class MalVector: public MalCollection
+{
+public:
+    MalVector(): MalCollection(MAL_VECTOR) {};
+    MalVector(PairPtr value_list);
+    MalVector(const InternalVector& value_list);
+    virtual std::string to_str();
+    virtual bool is_vector() {return true;};
+protected:
+    InternalVector m_vector;
+};
+
+
+class MalHashmap: public MalCollection
+{
+public:
+    MalHashmap(): MalCollection(MAL_HASHMAP) {};
+    MalHashmap(PairPtr value_list);
+    virtual std::string to_str();
+    virtual bool is_hashmap() {return true;};
+protected:
+    InternalHashmap m_hashmap;
+};
+
+
+
+class MalNumber: public MalObject
+{
+public:
+    MalNumber(MalType type): MalObject(type) {};
+    virtual bool is_number() {return true;};
 };
 
 
 class MalInteger: public MalNumber
 {
 public:
-    MalInteger(std::string r): MalNumber(r), internal_value(r) {};
-    MalInteger(mpz_class i): MalNumber(i.get_str()), internal_value(i) {};
-    virtual std::string value() {return internal_value.get_str();};
-    virtual MalTypeName type() {return MAL_INTEGER;};
-    virtual mpz_class numeric_value() {return internal_value;};
+    MalInteger(mpz_class value): MalNumber(MAL_INTEGER), m_value(value) {};
+    virtual bool is_integer() {return true;};
 protected:
-    mpz_class internal_value;
-};
-
-
-class MalSystemInteger: public MalNumber
-{
-public:
-    MalSystemInteger(std::string r): MalNumber(r), internal_value(stoll(r)) {};
-    MalSystemInteger(unsigned long long int i): MalNumber(std::to_string(i)), internal_value(i) {};
-    virtual std::string value() {return std::to_string(internal_value);};
-    virtual MalTypeName type() {return MAL_SYSTEM_INTEGER;};
-    virtual unsigned long long int numeric_value() {return internal_value;};
-protected:
-    unsigned long long int internal_value;
-};
-
-
-class MalHex: public MalSystemInteger
-{
-public:
-    MalHex(std::string r): MalSystemInteger(r) { internal_value = stoll(r, nullptr, 16); };
-    virtual MalTypeName type() {return MAL_HEX;};
-};
-
-
-class MalBinary: public MalSystemInteger
-{
-public:
-    MalBinary(std::string r): MalSystemInteger(r) { internal_value = stoll(r, nullptr, 16); };
-    virtual MalTypeName type() {return MAL_BINARY;};
-};
-
-
-class MalOctal: public MalSystemInteger
-{
-public:
-    MalOctal(std::string r): MalSystemInteger(r) {internal_value = stoll(r, nullptr, 8); };
-    virtual MalTypeName type() {return MAL_OCTAL;};
-};
-
-
-class MalFractional: public MalNumber
-{
-public:
-    MalFractional(std::string r): MalNumber(r), internal_value(r) {};
-    MalFractional(mpf_class f);
-    virtual MalTypeName type() {return MAL_FRACTIONAL;};
-    virtual std::string value();
-    virtual mpf_class numeric_value() { return internal_value;};
-protected:
-    mpf_class internal_value;
+    mpz_class m_value;
 };
 
 
 class MalRational: public MalNumber
 {
 public:
-    MalRational(std::string r): MalNumber(r), internal_value(r) {};
-    MalRational(mpq_class r): MalNumber(r.get_str()), internal_value(r) {};
-    virtual std::string value() {return internal_value.get_str();};
-    virtual MalTypeName type() {return MAL_RATIONAL;};
-    virtual mpq_class numeric_value() { return internal_value;};
+    MalRational(mpq_class value): MalNumber(MAL_RATIONAL), m_value(value) {};
+    virtual bool is_rational() {return true;};
 protected:
-    mpq_class internal_value;
+    mpq_class m_value;
+};
+
+
+class MalFractional: public MalNumber
+{
+public:
+    MalFractional(mpf_class value): MalNumber(MAL_FRACTIONAL), m_value(value) {};
+    virtual bool is_fractional() {return true;};
+protected:
+    mpf_class m_value;
 };
 
 
 class MalComplex: public MalNumber
 {
 public:
-    MalComplex(std::string r);
-    MalComplex(std::complex<mpf_class> c);
-    virtual std::string value();
-    virtual MalTypeName type() {return MAL_COMPLEX;};
-    virtual std::complex<mpf_class> numeric_value() { return internal_value;};
+    MalComplex(complex_mpf value): MalNumber(MAL_COMPLEX), m_value(value) {};
+    virtual bool is_complex() {return true;};
 protected:
-    std::complex<mpf_class> internal_value;
+    complex_mpf m_value;
 };
 
 
-class MalProcedure: public MalSymbol
+class MalProcedure: public MalCollection
 {
 public:
-    MalProcedure(TokenVector c, TokenVector p_list, EnvPtr e, int a): MalSymbol("<function>"), code(c), param_list(p_list), parent_environment(e), arity(a) {};
-    virtual MalTypeName type() {return MAL_PROCEDURE;};
-    virtual TokenVector fn();
-    virtual TokenVector ast() {return code;};
-    virtual TokenVector params() {return param_list;};
-    virtual EnvPtr parent() {return parent_environment;};
+    MalProcedure(PairPtr code, PairPtr parameters, EnvPtr parent, int arity): MalCollection(MAL_PROCEDURE), m_code(code), m_parameters(parameters), m_parent(parent), m_arity(arity) {};
+    virtual bool is_procedure() {return true;};
+    virtual PairPtr ast() {return m_code;};
+    virtual PairPtr params() {return m_parameters;};
+    virtual EnvPtr parent() {return m_parent;};
+    virtual int arity() { return m_arity;};
+
 protected:
-    TokenVector code, param_list;
-    EnvPtr parent_environment;
-    int arity;
+    PairPtr m_code;
+    PairPtr m_parameters;
+    EnvPtr m_parent;
+    int m_arity;
 };
 
 
-class MalPrimitive: public MalSymbol
+
+class MalPrimitive: public MalCollection
 {
 public:
-    MalPrimitive(std::string r, int a): MalSymbol(r), arity(a) {};
-    virtual MalTypeName type() {return MAL_PRIMITIVE;};
-    virtual std::string value() {return "<primitive procedure (" + repr + " " + std::to_string(arity) + ")>";};
-    virtual TokenVector raw_value();
+    MalPrimitive(MalSymbol name, int arity): MalCollection(MAL_PRIMITIVE), m_name(name), m_arity(arity) {};
+    virtual bool is_procedure() {return true;};
+    virtual int arity() { return m_arity;};
+
 protected:
-    int arity;
+    MalSymbol m_name;
+    int m_arity;
+};
+
+
+
+class MalRestArg: public MalObject
+{
+public:
+    MalRestArg(): MalObject(MAL_REST_ARG) {};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalPeriod: public MalObject
+{
+public:
+    MalPeriod(): MalObject(MAL_PERIOD) {};
+    virtual std::string to_str() {return ".";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalComma: public MalObject
+{
+public:
+    MalComma(): MalObject(MAL_COMMA) {};
+    virtual std::string to_str() {return ",";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalReaderMacro: public MalObject
+{
+public:
+    MalReaderMacro(MalType type, MalPtr arg): MalObject(type), m_arg(arg) {};
+    virtual std::string to_str() {return "<reader-macro>";};
+    virtual bool is_syntax() {return true;};
+protected:
+    MalPtr m_arg;
+};
+
+
+class MalQuote: public MalReaderMacro
+{
+public:
+    MalQuote(MalPtr arg): MalReaderMacro(MAL_QUOTE, arg) {};
+    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalQuasiquote: public MalReaderMacro
+{
+public:
+    MalQuasiquote(MalPtr arg): MalReaderMacro(MAL_QUASIQUOTE, arg) {};
+    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalUnquote: public MalReaderMacro
+{
+public:
+    MalUnquote(MalPtr arg): MalReaderMacro(MAL_UNQUOTE, arg) {};
+    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalSpliceUnquote: public MalReaderMacro
+{
+public:
+    MalSpliceUnquote(MalPtr arg): MalReaderMacro(MAL_SPLICE_UNQUOTE, arg) {};
+    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalDeref: public MalReaderMacro
+{
+public:
+    MalDeref(MalPtr arg): MalReaderMacro(MAL_DEREF, arg) {};
+    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalMeta: public MalReaderMacro
+{
+public:
+    MalMeta(MalCollection applicant, MalPtr meta): MalReaderMacro(MAL_META, meta), m_applicant(applicant) {};
+    virtual std::string to_str() {return "(with-meta " + m_applicant.to_str() + " " + m_arg->to_str()  + ")";};
+    virtual bool is_syntax() {return true;};
+protected:
+    MalCollection m_applicant;
 };
 
 

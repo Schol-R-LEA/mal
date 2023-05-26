@@ -9,14 +9,28 @@
 
 extern unsigned int paren_count, square_bracket_count, hm_count, s_index;
 
+class Reader
+{
+public:
+    Reader(PairPtr tokens): m_current_token(0), m_tokens(tokens) {};
+    MalPtr peek();
+    MalPtr next();
 
-TokenVector tokenize(std::string input_stream);
-TokenVector read_str(std::string s);
+private:
+    unsigned int m_current_token;
+    PairPtr m_tokens;
+};
+
+
+PairPtr tokenize(std::string input_stream);
+Reader read_str(std::string input_stream);
+
+MalPtr read_form(std::string input_stream);
 
 void read_whitespace(std::string input_stream, char leading);
 void read_comment(std::string input_stream);
-void read_string(std::string input_stream, TokenVector& tokens);
-void read_symbol(std::string input_stream, char leading, TokenVector& tokens);
+MalPtr read_string(std::string input_stream);
+MalPtr read_symbol(std::string input_stream, char leading);
 
 
 #endif

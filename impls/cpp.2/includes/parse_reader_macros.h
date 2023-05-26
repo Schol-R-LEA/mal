@@ -11,44 +11,46 @@
 #include "types.h"
 
 
-template<class RM> void read_reader_macro(std::string input_stream, TokenVector& tokens)
+template<class RM> PairPtr read_reader_macro(std::string input_stream)
 {
     char ch = input_stream[s_index++];
-    TokenVector rm_argument;
+    PairPtr rm_argument;
 
     if (is_left_balanced(ch))
     {
         switch(ch)
         {
             case '(':
-                read_list(input_stream, rm_argument);
+                rm_argument = read_list(input_stream);
                 break;
             case '[':
-                read_vector(input_stream, rm_argument);
+                rm_argument = read_vector(input_stream);
                 break;
             case '{':
-                read_hashmap(input_stream, rm_argument);
+                rm_argument = read_hashmap(input_stream);
                 break;
             case '\"':
-                read_string(input_stream, rm_argument);
+                rm_argument = read_string(input_stream);
                 break;
         }
     }
     else if (isdigit(ch))
     {
-        read_number(input_stream, ch, rm_argument);
+        rm_argument = read_number(input_stream, ch);
     }
     else
     {
-        read_symbol(input_stream, ch, rm_argument);
+        rm_argument = read_symbol(input_stream, ch);
     }
 
-    tokens.append(std::make_shared<RM>(rm_argument));
+    RM result(rm_argument);
+
+    return result;
 }
 
 
 
-void read_unquote(std::string input_stream, TokenVector& tokens);
-void read_meta(std::string input_stream, TokenVector& tokens);
+PairPtr read_unquote(std::string input_stream);
+PairPtr read_meta(std::string input_stream);
 
 #endif

@@ -11,6 +11,7 @@
 #include <stack>
 #include <typeinfo>
 #include <cstdarg>
+#include <gmpxx.h>
 #include "types.h"
 
 
@@ -18,7 +19,7 @@ class Environment
 {
 public:
     Environment(std::shared_ptr<Environment> p = nullptr): parent(p) {};
-    Environment(std::shared_ptr<Environment> p, MalPair binds, MalPair exprs);
+    Environment(std::shared_ptr<Environment> p, TokenVector binds, TokenVector exprs);
     void set(EnvSymbolPtr element);
     void set(std::string symbol, MalPtr value);
     void set(MalPtr symbol, MalPtr value);
@@ -50,7 +51,7 @@ public:
     virtual MalPtr value() {return val;};
     virtual int arity() {return n_ary;};
     virtual void set(MalPtr value);
-    virtual PairPtr apply(TokenVector& args) {return args;};
+    virtual TokenVector apply(TokenVector& args) {return args;};
 protected:
     MalSymbol sym;
     MalPtr val;
@@ -63,7 +64,7 @@ class Env_Primitive: public Env_Symbol
 public:
     Env_Primitive(MalPtr s, Procedure p, int a): Env_Symbol(s), procedure(p) {n_ary = a;};
     virtual Env_Element_Type type() {return ENV_PRIMITIVE;};
-    virtual PairPtr apply(TokenVector& args);
+    virtual TokenVector apply(TokenVector& args);
 
 protected:
     Procedure procedure;

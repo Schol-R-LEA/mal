@@ -14,13 +14,13 @@
 #include "exceptions.h"
 
 
-MalPtr READ(std::string input)
+TokenVector READ(std::string input)
 {
     return read_str(input);
 }
 
 
-MalPtr EVAL(TokenVector input)
+TokenVector EVAL(TokenVector input)
 {
     return input;
 }
@@ -58,53 +58,42 @@ int main()
         {
             std::cout << rep(input) << '\n';
         }
-        catch (InvalidConversionException& e)
-        {
-            std::cout << e.what() << '\n';
-        }
-        catch(UnbalancedParenthesesException& e)
+        catch(UnbalancedParenthesesException* e)
         {
             std::cout << "(EOF|end of input|unbalanced)." << '\n';
         }
-        catch(UnbalancedVectorException& e)
+        catch(UnbalancedVectorException* e)
         {
             std::cout << "(EOF|end of input|unbalanced)." << '\n';
         }
-        catch(UnbalancedStringException& e)
+        catch(UnbalancedStringException* e)
         {
             std::cout << "(EOF|end of input|unbalanced)." << '\n';
         }
-        catch(UnbalancedHashmapException& e)
+        catch(UnbalancedHashmapException* e)
         {
             std::cout << "(EOF|end of input|unbalanced)."  << '\n';
         }
-        catch(IncompleteComplexNumberException& e)
+        catch(IncompleteComplexNumberException* e)
         {
             std::cout << "(EOF|end of input|unbalanced)."  << '\n';
         }
-        catch(IncompleteEscapeException& e)
+        catch(IncompleteEscapeException* e)
         {
             std::cout << "(EOF|end of input|unbalanced)."  << '\n';
         }
-        catch(InvalidNumberException& e)
+        catch(InvalidNumberException* e)
         {
-            std::cout << "(invalid number): " << e.what() << "." << '\n';
+            std::cout << "(invalid number): " << e->value() << "." << '\n';
         }
-        catch(InvalidHashmapException& e)
+        catch(InvalidHashmapException* e)
         {
             std::cout << "(invalid hash map)." << '\n';
         }
 
-        catch(InvalidMetaException& e)
+        catch(InvalidMetaException* e)
         {
             std::cout << "(invalid meta expression)." << '\n';
-        }
-
-
-        // backstop any and all other possible exceptions
-        catch(std::exception& e)
-        {
-            std::cout << e.what() << '\n';
         }
     }
     std::cout << "Exiting.\n";
