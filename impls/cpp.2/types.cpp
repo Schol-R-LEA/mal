@@ -163,7 +163,7 @@ MalPtr MalPair::operator[](size_t index)
 
 void MalPair::add(MalPtr addition)
 {
-    std::cout << this->to_str() << std::endl;
+
     if (m_car == nullptr)
     {
         if (m_cdr == nullptr)

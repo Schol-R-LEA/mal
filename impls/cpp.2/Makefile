@@ -1,5 +1,5 @@
 CC=g++
-FLAGS=-g -Wall -Werror -Wextra
+FLAGS=-g -Wall -Werror -Wextra -std=c++20
 INC=includes/
 BIN=bin
 LIBS=-lreadline -lgmpxx -lgmp

@@ -53,12 +53,12 @@ class MalString;
 class MalInteger;
 class MalProcedure;
 
+// shorthand versions of the most commonly used shared pointer types
 typedef std::shared_ptr<MalObject> MalPtr;
 typedef std::shared_ptr<MalPair> PairPtr;
 
 // types for the internal representations for collection classes
 typedef std::vector<MalPtr> InternalVector;
-
 typedef std::unordered_map<MalPtr, MalPtr> InternalHashmap;
 
 
@@ -180,7 +180,7 @@ public:
 };
 
 
-class MalPair: public MalCollection
+class MalPair: public MalCollection, std::enable_shared_from_this<MalPair>
 {
 public:
     MalPair(MalPtr car=nullptr, MalPtr cdr=nullptr): MalCollection(MAL_PAIR), m_car(car), m_cdr(cdr) {};
@@ -189,12 +189,12 @@ public:
     virtual bool is_null() {return (m_car == nullptr && m_cdr == nullptr);};
     virtual bool is_pair() {return true;};
     virtual bool is_list() {return (m_cdr == nullptr || m_cdr->is_pair());};
-    virtual PairPtr as_pair() {return std::make_shared<MalPair>(m_car, m_cdr);};
+    virtual PairPtr as_pair() {return shared_from_this();};
     virtual size_t size();
     virtual MalPtr operator[](size_t index);
     virtual MalPtr car() {return m_car;};
     virtual MalPtr cdr() {return m_cdr;};
-    virtual void add(MalPtr addition);       // inserts an element at the end of the list
+    virtual void add(MalPtr addition);       // inserts an element at the end
 protected:
     MalPtr m_car, m_cdr;
 };
