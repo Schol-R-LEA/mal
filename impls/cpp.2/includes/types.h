@@ -29,7 +29,7 @@ enum MalType
     MAL_OBJECT,
     MAL_ATOM, MAL_SYMBOL, MAL_KEYWORD,
     MAL_STRING, MAL_BOOLEAN,
-    MAL_COLLECTION, MAL_PAIR, MAL_VECTOR, MAL_HASHMAP,
+    MAL_COLLECTION, MAL_PAIR, MAL_LIST, MAL_VECTOR, MAL_HASHMAP,
     Mal_NUMBER, MAL_INTEGER, MAL_FRACTIONAL, MAL_RATIONAL, MAL_COMPLEX,
     MAL_PROCEDURE, MAL_PRIMITIVE, MAL_REST_ARG,
     MAL_PERIOD, MAL_COMMA,
@@ -183,21 +183,41 @@ public:
 class MalPair: public MalCollection, std::enable_shared_from_this<MalPair>
 {
 public:
-    MalPair(MalPtr car=nullptr, MalPtr cdr=nullptr): MalCollection(MAL_PAIR), m_car(car), m_cdr(cdr) {};
+    MalPair(MalPtr ar=nullptr, MalPtr dr=nullptr): MalCollection(MAL_PAIR), m_ar(ar), m_dr(dr) {};
     virtual std::string to_str();
     virtual std::string to_str_continued();
-    virtual bool is_null() {return (m_car == nullptr && m_cdr == nullptr);};
+    virtual bool is_null() {return (m_ar == nullptr && m_dr == nullptr);};
     virtual bool is_pair() {return true;};
-    virtual bool is_list() {return (m_cdr == nullptr || m_cdr->is_pair());};
+    virtual bool is_list() {return (m_dr == nullptr || m_dr->is_pair());};
     virtual PairPtr as_pair() {return shared_from_this();};
+    virtual size_t size(return m_size;);
+    virtual MalPtr car() {return m_ar;};
+    virtual MalPtr cdr() {return m_dr;};
+protected:
+    MalPtr m_ar, m_dr;
+    size_t m_size;
+};
+
+
+class MalList: public MalCollection, std::enable_shared_from_this<MalPair>
+{
+public:
+    MalPair(PairPtr start = nullptr): MalCollection(MAL_LIST), m_start(start) {};
+    virtual std::string to_str();
+    virtual std::string to_str_continued();
+    virtual bool is_null() {return m_start->is_null();};
+    virtual bool is_pair() {return true;};
+    virtual bool is_list() {return !m_start->is_null();};
+    virtual PairPtr as_list() {return shared_from_this();};
     virtual size_t size();
     virtual MalPtr operator[](size_t index);
-    virtual MalPtr car() {return m_car;};
-    virtual MalPtr cdr() {return m_cdr;};
+    virtual MalPtr car() {return m_start->car();};
+    virtual MalPtr cdr() {return m_start->cdr();};
     virtual void add(MalPtr addition);       // inserts an element at the end
 protected:
-    MalPtr m_car, m_cdr;
+    PairPtr m_start, m_end;
 };
+
 
 
 class MalVector: public MalCollection

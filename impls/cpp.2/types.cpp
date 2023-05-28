@@ -18,7 +18,7 @@ std::string mal_type_name[] =
     "Object",
     "Atom", "Symbol", "Keyword",
     "String", "Boolean",
-    "Collection", "Pair", "Vector", "Hashmap",
+    "Collection", "Pair", "List", "Vector", "Hashmap",
     "Number", "Integer", "Rational", "Fractional", "Complex",
     "Procedure", "Primitive", "Rest Arguments",
     "Quote", "Quasiquote",
@@ -26,14 +26,33 @@ std::string mal_type_name[] =
     "Meta"
 };
 
+size_t MalPair::size()
+{
+    if (is_null())
+    {
+        return 0;
+    }
 
-std::string MalPair::to_str()
+    if (m_cdr == nullptr)
+    {
+        return 1;
+    }
+
+    else
+    {
+        return 2;
+    }
+
+}
+
+
+std::string MalList::to_str()
 {
     return "(" + to_str_continued() +  ")";
 }
 
 
-std::string MalPair::to_str_continued()
+std::string MalList::to_str_continued()
 {
     // handle CAR pointer
     if (m_car == nullptr)
@@ -106,36 +125,7 @@ std::string MalPair::to_str_continued()
 }
 
 
-size_t MalPair::size()
-{
-    if (is_null())
-    {
-        return 0;
-    }
-
-    if (m_cdr == nullptr)
-    {
-        return 1;
-    }
-    size_t index = 1;
-    auto next = m_cdr;
-    while (next != nullptr)
-    {
-        index++;
-        if (next->is_list())
-        {
-            next = next->as_pair()->m_cdr;
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    return index;
-}
-
-MalPtr MalPair::operator[](size_t index)
+MalPtr MalList::operator[](size_t index)
 {
     if (size() < index)
     {
@@ -199,7 +189,6 @@ void MalPair::add(MalPtr addition)
         }
     }
 }
-
 
 
 
