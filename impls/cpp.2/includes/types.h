@@ -59,7 +59,7 @@ typedef std::shared_ptr<MalPair> PairPtr;
 // types for the internal representations for collection classes
 typedef std::vector<MalPtr> InternalVector;
 
-typedef std::unordered_map<std::string, MalPtr> InternalHashmap;
+typedef std::unordered_map<MalPtr, MalPtr> InternalHashmap;
 
 
 // Complex type
@@ -99,8 +99,8 @@ public:
     // return values of the subclasses
     virtual std::string as_string() {throw InvalidConversionException(mal_type_name[this->m_type], mal_type_name[MAL_STRING]); return "";};
     virtual std::string as_keyword() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_KEYWORD]); return "";};
-    virtual MalPtr as_symbol() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_SYMBOL]); return nullptr;};
-    virtual std::shared_ptr<MalPair> as_pair() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_PAIR]); return nullptr;};
+    virtual std::string as_symbol() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_SYMBOL]); return "";};
+    virtual PairPtr as_pair() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_PAIR]); return nullptr;};
     virtual InternalVector as_vector() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_VECTOR]); InternalVector v; return v;};
     virtual InternalHashmap as_hashmap() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_HASHMAP]); InternalHashmap hm; return hm;};
     virtual bool as_boolean() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_BOOLEAN]); return false;};
@@ -127,8 +127,9 @@ class MalSymbol: public MalAtom
 {
 public:
     MalSymbol(std::string sym): MalAtom(MAL_SYMBOL), m_symbol(sym) {};
-    virtual std::string to_str() {return ":" + m_symbol;};
+    virtual std::string to_str() {return m_symbol;};
     virtual bool is_symbol() {return true;};
+    virtual std::string as_symbol() {return m_symbol;};
 
 protected:
     std::string m_symbol;
@@ -182,13 +183,18 @@ public:
 class MalPair: public MalCollection
 {
 public:
-    MalPair(MalPtr car, MalPtr cdr): MalCollection(MAL_PAIR), m_car(car), m_cdr(cdr) {};
+    MalPair(MalPtr car=nullptr, MalPtr cdr=nullptr): MalCollection(MAL_PAIR), m_car(car), m_cdr(cdr) {};
     virtual std::string to_str();
+    virtual std::string to_str_continued();
     virtual bool is_null() {return (m_car == nullptr && m_cdr == nullptr);};
     virtual bool is_pair() {return true;};
     virtual bool is_list() {return (m_cdr == nullptr || m_cdr->is_pair());};
+    virtual PairPtr as_pair() {return std::make_shared<MalPair>(m_car, m_cdr);};
     virtual size_t size();
-    virtual operator[](size_t index);
+    virtual MalPtr operator[](size_t index);
+    virtual MalPtr car() {return m_car;};
+    virtual MalPtr cdr() {return m_cdr;};
+    virtual void add(MalPtr addition);       // inserts an element at the end of the list
 protected:
     MalPtr m_car, m_cdr;
 };
@@ -201,6 +207,7 @@ public:
     MalVector(PairPtr value_list);
     MalVector(const InternalVector& value_list);
     virtual std::string to_str();
+    virtual size_t size() {return m_vector.size();};
     virtual bool is_vector() {return true;};
 protected:
     InternalVector m_vector;
@@ -213,6 +220,7 @@ public:
     MalHashmap(): MalCollection(MAL_HASHMAP) {};
     MalHashmap(PairPtr value_list);
     virtual std::string to_str();
+    virtual size_t size() {return m_hashmap.size();};
     virtual bool is_hashmap() {return true;};
 protected:
     InternalHashmap m_hashmap;
@@ -220,10 +228,10 @@ protected:
 
 
 
-class MalNumber: public MalObject
+class MalNumber: public MalAtom
 {
 public:
-    MalNumber(MalType type): MalObject(type) {};
+    MalNumber(MalType type): MalAtom(type) {};
     virtual bool is_number() {return true;};
 };
 
@@ -233,6 +241,8 @@ class MalInteger: public MalNumber
 public:
     MalInteger(mpz_class value): MalNumber(MAL_INTEGER), m_value(value) {};
     virtual bool is_integer() {return true;};
+    virtual std::string to_str() {return m_value.get_str();};
+    virtual mpz_class as_integer() {return m_value;};
 protected:
     mpz_class m_value;
 };
@@ -243,6 +253,8 @@ class MalRational: public MalNumber
 public:
     MalRational(mpq_class value): MalNumber(MAL_RATIONAL), m_value(value) {};
     virtual bool is_rational() {return true;};
+    virtual std::string to_str() {return m_value.get_str();};
+    virtual mpq_class as_rational() {return m_value;};
 protected:
     mpq_class m_value;
 };
@@ -253,6 +265,8 @@ class MalFractional: public MalNumber
 public:
     MalFractional(mpf_class value): MalNumber(MAL_FRACTIONAL), m_value(value) {};
     virtual bool is_fractional() {return true;};
+    virtual std::string to_str();
+    virtual mpf_class as_fractional() {return m_value;};
 protected:
     mpf_class m_value;
 };
@@ -263,6 +277,8 @@ class MalComplex: public MalNumber
 public:
     MalComplex(complex_mpf value): MalNumber(MAL_COMPLEX), m_value(value) {};
     virtual bool is_complex() {return true;};
+    virtual std::string to_str();
+    virtual complex_mpf as_complex() {return m_value;};
 protected:
     complex_mpf m_value;
 };
@@ -394,11 +410,11 @@ public:
 class MalMeta: public MalReaderMacro
 {
 public:
-    MalMeta(MalCollection applicant, MalPtr meta): MalReaderMacro(MAL_META, meta), m_applicant(applicant) {};
-    virtual std::string to_str() {return "(with-meta " + m_applicant.to_str() + " " + m_arg->to_str()  + ")";};
+    MalMeta(MalPtr applicant, MalPtr meta): MalReaderMacro(MAL_META, meta), m_applicant(applicant) {};
+    virtual std::string to_str() {return "(with-meta " + m_applicant->to_str() + " " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 protected:
-    MalCollection m_applicant;
+    MalPtr m_applicant;
 };
 
 

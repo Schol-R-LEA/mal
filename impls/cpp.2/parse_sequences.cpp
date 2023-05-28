@@ -34,7 +34,7 @@ MalPtr read_vector(std::string input_stream)
 {
     square_bracket_count++;
 
-    std::make_shared<MalVector>(tokenize(input_stream)));
+    return std::make_shared<MalVector>(tokenize(input_stream));
 }
 
 
@@ -55,7 +55,7 @@ MalPtr read_hashmap(std::string input_stream)
 {
     hm_count++;
 
-    std::make_shared<MalHashmap>(tokenize(input_stream));
+    return std::make_shared<MalHashmap>(tokenize(input_stream));
 }
 
 

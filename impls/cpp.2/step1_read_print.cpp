@@ -100,6 +100,16 @@ int main()
             std::cout << "(invalid meta expression)." << '\n';
         }
 
+        catch(IndexOutOfBoundsException& e)
+        {
+            std::cout << "(index out of bounds): " << e.what() << '\n';
+        }
+
+        catch(ImproperListException& e)
+        {
+            std::cout << "(list function applied to improper list): " << e.what() << '\n';
+        }
+
 
         // backstop any and all other possible exceptions
         catch(std::exception& e)

@@ -249,4 +249,27 @@ protected:
     std::string pair;
 };
 
+
+class IndexOutOfBoundsException: public std::exception
+{
+public:
+    IndexOutOfBoundsException(std::string size, std::string index): m_size(size), m_index(index) {};
+    virtual const char* what() const noexcept { return (m_size + " : " + m_index).c_str(); };
+protected:
+    std::string m_size, m_index;
+};
+
+
+class ImproperListException: public std::exception
+{
+public:
+    ImproperListException(std::string p): pair(p) {};
+    virtual const char* what() const noexcept { return pair.c_str(); };
+protected:
+    std::string pair;
+};
+
+
+
+
 #endif

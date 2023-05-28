@@ -18,7 +18,7 @@ unsigned int hm_count = 0;
 unsigned int s_index = 0;
 
 
-PairPtr read_str(std::string s)
+Reader read_str(std::string s)
 {
     paren_count = 0;
     square_bracket_count = 0;
@@ -39,7 +39,7 @@ PairPtr read_str(std::string s)
         throw UnbalancedHashmapException();
     }
 
-    return tokens;
+    return Reader(tokens);
 }
 
 
@@ -56,7 +56,7 @@ PairPtr tokenize(std::string input_stream)
 
         if (isspace(ch))
         {
-            return MalPair(read_whitespace(input_stream), tokenize(input_stream));
+            return MalPair(read_whitespace(input_stream, ch), tokenize(input_stream));
         }
         else
         {

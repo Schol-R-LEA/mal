@@ -11,10 +11,10 @@
 #include "types.h"
 
 
-template<class RM> PairPtr read_reader_macro(std::string input_stream)
+template<class RM> MalPtr read_reader_macro(std::string input_stream)
 {
     char ch = input_stream[s_index++];
-    PairPtr rm_argument;
+    MalPtr rm_argument;
 
     if (is_left_balanced(ch))
     {
@@ -45,12 +45,12 @@ template<class RM> PairPtr read_reader_macro(std::string input_stream)
 
     RM result(rm_argument);
 
-    return result;
+    return std::make_shared<MalReaderMacro>(result);
 }
 
 
 
-PairPtr read_unquote(std::string input_stream);
-PairPtr read_meta(std::string input_stream);
+MalPtr read_unquote(std::string input_stream);
+MalPtr read_meta(std::string input_stream);
 
 #endif

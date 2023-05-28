@@ -47,6 +47,9 @@ $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 -o $(BIN)/step5_tco
 
 
+test_expr_reading: tests/test-expr-reading.cpp types
+	$(CC) $(FLAGS) -I$(INC) $(LIBS) tests/test-expr-reading.cpp $(BIN)/types.o -o $(BIN)/test_expr_reading
+
 
 core: core.cpp types env apply
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) -c core.cpp -o $(BIN)/core.o

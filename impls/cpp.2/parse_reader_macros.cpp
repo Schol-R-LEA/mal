@@ -10,41 +10,41 @@
 #include "parse_reader_macros.h"
 
 
-void read_unquote(std::string input_stream, TokenVector& tokens)
+MalPtr read_unquote(std::string input_stream)
 {
     char ch = input_stream[s_index++];
     if (ch == '@')
     {
-        read_reader_macro<MalSpliceUnquote>(input_stream, tokens);
+        return read_reader_macro<MalSpliceUnquote>(input_stream);
     }
     else
     {
         s_index--;
-        read_reader_macro<MalUnquote>(input_stream, tokens);
+        return read_reader_macro<MalUnquote>(input_stream);
     }
 }
 
 
-void read_meta(std::string input_stream, TokenVector& tokens)
+MalPtr read_meta(std::string input_stream)
 {
     char ch = input_stream[s_index++];
-    TokenVector seq_argument, main_argument;
+    MalPtr seq_argument, main_argument;
 
     if (is_left_balanced(ch))
     {
         switch(ch)
         {
             case '(':
-                read_list(input_stream, seq_argument);
+                seq_argument = read_list(input_stream);
                 break;
             case '[':
-                read_vector(input_stream, seq_argument);
+                seq_argument = read_vector(input_stream);
                 break;
             case '{':
-                read_hashmap(input_stream, seq_argument);
+                seq_argument = read_hashmap(input_stream);
                 break;
             case '\"':
-                read_string(input_stream, seq_argument);
+                seq_argument = read_string(input_stream);
                 break;
         }
 
@@ -62,26 +62,26 @@ void read_meta(std::string input_stream, TokenVector& tokens)
             switch(ch)
             {
                 case '(':
-                    read_list(input_stream, main_argument);
+                    main_argument = read_list(input_stream);
                     break;
                 case '[':
-                    read_vector(input_stream, main_argument);
+                    main_argument = read_vector(input_stream);
                     break;
                 case '{':
-                    read_hashmap(input_stream, main_argument);
+                    main_argument = read_hashmap(input_stream);
                     break;
                 case '\"':
-                    read_string(input_stream, main_argument);
+                    main_argument = read_string(input_stream);
                     break;
             }
         }
         else if (isdigit(ch))
         {
-            read_number(input_stream, ch, main_argument);
+            main_argument = read_number(input_stream, ch);
         }
         else if (!is_syntax(ch))
         {
-            read_symbol(input_stream, ch, main_argument);
+            main_argument = read_symbol(input_stream, ch);
         }
         else
         {
@@ -93,5 +93,5 @@ void read_meta(std::string input_stream, TokenVector& tokens)
         throw new InvalidMetaException();
     }
 
-    tokens.append(std::make_shared<MalMeta>(main_argument, seq_argument));
+    return std::make_shared<MalMeta>(main_argument, seq_argument);
 }
