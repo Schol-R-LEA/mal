@@ -180,7 +180,7 @@ public:
 };
 
 
-class MalPair: public MalCollection
+class MalPair: public MalCollection, public std::enable_shared_from_this<MalPair>
 {
 public:
     MalPair(MalPtr car=nullptr, MalPtr cdr=nullptr): MalCollection(MAL_PAIR), m_car(car), m_cdr(cdr) {};
@@ -189,7 +189,7 @@ public:
     virtual bool is_null() {return (m_car == nullptr && m_cdr == nullptr);};
     virtual bool is_pair() {return true;};
     virtual bool is_list() {return (m_cdr == nullptr || m_cdr->is_pair());};
-    virtual PairPtr as_pair() {return std::make_shared<MalPair>(m_car, m_cdr);};
+    virtual PairPtr as_pair() {return shared_from_this();};
     virtual size_t size();
     virtual MalPtr operator[](size_t index);
     virtual MalPtr car() {return m_car;};

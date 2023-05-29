@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <cstdint>
 #include "types.h"
 
 std::string mal_type_name[] =
@@ -163,7 +162,6 @@ MalPtr MalPair::operator[](size_t index)
 
 void MalPair::add(MalPtr addition)
 {
-    std::cout << this->to_str() << std::endl;
     if (m_car == nullptr)
     {
         if (m_cdr == nullptr)
