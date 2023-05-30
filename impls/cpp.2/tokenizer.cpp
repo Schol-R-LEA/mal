@@ -26,7 +26,6 @@ PairPtr Tokenizer::tokenize(std::string input_stream)
         }
         else
         {
-            ch = input_stream[s_index++];
             switch (ch)
             {
                 case ';':

@@ -12,7 +12,6 @@
 MalPtr Tokenizer::read_list(std::string input_stream)
 {
     this->paren_count++;
-    std::cout << "opening paren " << this->paren_count << std::endl;
     PairPtr list, curr_pair;
 
     do
@@ -27,7 +26,6 @@ MalPtr Tokenizer::read_list(std::string input_stream)
 
 void Tokenizer::close_list()
 {
-    std::cout << "closing paren " << this->paren_count << std::endl;
     if (this->paren_count > 0)
     {
         this->paren_count--;
