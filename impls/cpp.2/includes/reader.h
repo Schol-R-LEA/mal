@@ -1,13 +1,16 @@
 #ifndef READER_H
 #define READER_H
 
+
 #include <string>
 #include <memory>
 #include <vector>
 #include "lineedit.h"
 #include "types.h"
 
+
 extern unsigned int paren_count, square_bracket_count, hm_count, s_index;
+
 
 class Reader
 {

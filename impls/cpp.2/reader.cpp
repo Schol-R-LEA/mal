@@ -12,6 +12,41 @@
 #include "parse_reader_macros.h"
 
 
+MalPtr Reader::peek()
+ {
+    if (m_tokens == nullptr)
+    {
+        throw InvalidTokenStreamException();
+    }
+    if (m_current_token < m_tokens->size())
+    {
+        return (*m_tokens)[m_current_token];
+    }
+    else
+    {
+        return nullptr;
+    }
+ }
+
+
+MalPtr Reader::next()
+ {
+    if (m_tokens == nullptr)
+    {
+        throw InvalidTokenStreamException();
+    }
+
+    if (m_current_token < m_tokens->size())
+    {
+        return (*m_tokens)[m_current_token++];
+    }
+    else
+    {
+        return nullptr;
+    }
+ }
+
+
 unsigned int paren_count = 0;
 unsigned int square_bracket_count = 0;
 unsigned int hm_count = 0;
@@ -38,6 +73,10 @@ Reader read_str(std::string s)
     {
         throw UnbalancedHashmapException();
     }
+    if (tokens == nullptr)
+    {
+        throw InvalidTokenStreamException();
+    }
 
     return Reader(tokens);
 }
@@ -47,6 +86,7 @@ Reader read_str(std::string s)
 PairPtr tokenize(std::string input_stream)
 {
     char ch;
+    PairPtr handle = nullptr;
 
     if (s_index < input_stream.length())
     {
@@ -56,7 +96,8 @@ PairPtr tokenize(std::string input_stream)
 
         if (isspace(ch))
         {
-            return MalPair(read_whitespace(input_stream, ch), tokenize(input_stream));
+            read_whitespace(input_stream, ch);
+            return tokenize(input_stream);
         }
         else
         {
@@ -64,81 +105,86 @@ PairPtr tokenize(std::string input_stream)
             {
                 case ';':
                     read_comment(input_stream);
-                    return tokenize(input_stream);
+                    handle = tokenize(input_stream);
                     break;
                 case '(':
-                    return MalPair(read_list(input_stream), tokenize(input_stream));
+                    handle = std::make_shared<MalPair>(read_list(input_stream), tokenize(input_stream));
                     break;
                 case ')':
                     close_list();
                     break;
                 case '[':
-                    return MalPair(std::make_shared<MalVector>(read_vector(input_stream), tokenize(input_stream)));
+                    handle = std::make_shared<MalPair>(std::make_shared<MalVector>(read_vector(input_stream)), tokenize(input_stream));
                     break;
                 case ']':
                     close_vector();
                     break;
                 case '{':
-                    return MalPair(std::make_shared<MalVector>(read_hashmap(input_stream), tokenize(input_stream)));
+                    handle = std::make_shared<MalPair>(std::make_shared<MalHashmap>(read_hashmap(input_stream)), tokenize(input_stream));
                     break;
                 case '}':
                     close_hashmap();
                     break;
                 case '&':
-                    return MalPair(std::make_shared<MalRestArg>(), tokenize(input_stream));
+                    handle = std::make_shared<MalPair>(std::make_shared<MalRestArg>(), tokenize(input_stream));
                     break;
                 case '.':
-                    return MalPair(std::make_shared<MalPeriod>(), tokenize(input_stream));
+                    handle = std::make_shared<MalPair>(std::make_shared<MalPeriod>(), tokenize(input_stream));
                     break;
                 case ',':
-                    return MalPair(std::make_shared<MalComma>(), tokenize(input_stream));
+                    handle = std::make_shared<MalPair>(std::make_shared<MalComma>(), tokenize(input_stream));
                     break;
                 case '\'':
-                    return MalPair(std::make_shared<MalQuote>(read_reader_macro<MalQuote>(input_stream), tokenize(input_stream)));
+                    handle = std::make_shared<MalPair>(read_reader_macro<MalQuote>(input_stream), tokenize(input_stream));
                     break;
                 case '`':
-                    read_reader_macro<MalQuasiquote>(input_stream), tokenize(input_stream)));
+                    handle = std::make_shared<MalPair>(read_reader_macro<MalQuasiquote>(input_stream), tokenize(input_stream));
                     break;
                 case '~':
-                    return MalPair(std::make_shared<MalUnquote>(read_unquote(input_stream), tokenize(input_stream)));
+                    handle = std::make_shared<MalPair>(read_unquote(input_stream), tokenize(input_stream));
                     break;
                 case '@':
-                    return MalPair(std::make_shared<MalDeref>(read_reader_macro<MalDeref>(input_stream), tokenize(input_stream)));
+                    handle = std::make_shared<MalPair>(read_reader_macro<MalDeref>(input_stream), tokenize(input_stream));
                     break;
                 case '^':
-                    return MalPair(std::make_shared<MalDeref>(read_meta(input_stream), tokenize(input_stream)));
+                    handle = std::make_shared<MalPair>(read_meta(input_stream), tokenize(input_stream));
                     break;
                 case '\"':
-                    return MalPair(std::make_shared<MalDeref>(read_string(input_stream), tokenize(input_stream)));
+                    handle = std::make_shared<MalPair>(read_string(input_stream), tokenize(input_stream));
                     break;
                 case '-':
                     if (isdigit(input_stream[s_index]))
                     {
-                        return MalPair(std::make_shared<MalDeref>(read_number(input_stream, ch), tokenize(input_stream)));
+                        handle = std::make_shared<MalPair>(read_number(input_stream, ch), tokenize(input_stream));
                     }
                     else
                     {
-                        return MalPair(std::make_shared<MalDeref>(read_symbol(input_stream, ch), tokenize(input_stream)));
+                        handle = std::make_shared<MalPair>(read_symbol(input_stream, ch), tokenize(input_stream));
                     }
                     break;
                 default:
                     if (isdigit(ch))
                     {
-                        return MalPair(std::make_shared<MalNumber>(read_number(input_stream, ch), tokenize(input_stream)));
+                        handle = std::make_shared<MalPair>(read_number(input_stream, ch)), tokenize(input_stream);
                     }
                     else
                     {
-                        return MalPair(std::make_shared<MalObject>(read_symbol(input_stream, ch), tokenize(input_stream)));
+                        handle = std::make_shared<MalPair>(read_symbol(input_stream, ch)), tokenize(input_stream);
                     }
             }
         }
+
+        return handle;
     }
-    return nullptr;
+    else
+    {
+        return nullptr;
+    }
 }
 
 
 
-PairPtr read_form(std::string input_stream)
+MalPtr read_form(std::string input_stream)
 {
     return tokenize(input_stream);
 }
@@ -170,7 +216,7 @@ void read_comment(std::string input_stream)
 }
 
 
-MalString read_string(std::string input_stream)
+MalPtr read_string(std::string input_stream)
 {
     std::string s = "";
     char ch;
@@ -217,12 +263,12 @@ MalString read_string(std::string input_stream)
         throw UnbalancedStringException();
     }
 
-    return MalString(s);
+    return std::make_shared<MalString>(s);
 }
 
 
 
-MalObject read_symbol(std::string input_stream, char leading)
+MalPtr read_symbol(std::string input_stream, char leading)
 {
     std::string s = "";
 
@@ -244,23 +290,23 @@ MalObject read_symbol(std::string input_stream, char leading)
 
     if (s == "nil")
     {
-        return MalPair(nullptr, nullptr);
+        return std::make_shared<MalPair>(nullptr, nullptr);
     }
     else if (s == "true")
     {
-        return MalBoolean(true);
+        return std::make_shared<MalBoolean>(true);
     }
         else if (s == "false")
     {
-        return MalBoolean(false);
+        return std::make_shared<MalBoolean>(false);
     }
     else if (s[0] == ':')
     {
-        return MalKeyword(s.substr(1));
+        return std::make_shared<MalKeyword>(s.substr(1));
     }
     else
     {
-        return MalSymbol(s);
+        return std::make_shared<MalSymbol>(s);
     }
 }
 

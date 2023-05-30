@@ -43,6 +43,13 @@ public:
 };
 
 
+class InvalidTokenStreamException: public std::exception
+{
+public:
+    InvalidTokenStreamException() {};
+};
+
+
 class IncompleteComplexNumberException: public std::exception
 {
 public:
@@ -74,6 +81,25 @@ class InvalidHexNumberException: public InvalidNumberException
 {
 public:
     InvalidHexNumberException(std::string v): InvalidNumberException(v) {};
+};
+
+
+class InvalidIntegerException: public InvalidNumberException
+{
+public:
+    InvalidIntegerException(std::string v): InvalidNumberException(v) {};
+};
+
+class InvalidRationalNumberException: public InvalidNumberException
+{
+public:
+    InvalidRationalNumberException(std::string v): InvalidNumberException(v) {};
+};
+
+class InvalidFractionalNumberException: public InvalidNumberException
+{
+public:
+    InvalidFractionalNumberException(std::string v): InvalidNumberException(v) {};
 };
 
 class InvalidComplexNumberException: public InvalidNumberException

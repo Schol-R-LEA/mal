@@ -71,7 +71,7 @@ class MalObject
 {
 public:
     MalObject(MalType type): m_type(type) {};
-    virtual std::string to_str() {return "";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "";};
     MalType type() {return m_type;};
     std::string type_name() {return mal_type_name[m_type];};
     virtual size_t size() {return 1;};
@@ -127,7 +127,7 @@ class MalSymbol: public MalAtom
 {
 public:
     MalSymbol(std::string sym): MalAtom(MAL_SYMBOL), m_symbol(sym) {};
-    virtual std::string to_str() {return m_symbol;};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return m_symbol;};
     virtual bool is_symbol() {return true;};
     virtual std::string as_symbol() {return m_symbol;};
 
@@ -140,7 +140,7 @@ class MalKeyword: public MalAtom
 {
 public:
     MalKeyword(std::string kw): MalAtom(MAL_KEYWORD), m_keyword(kw) {};
-    virtual std::string to_str() {return ":" + m_keyword;};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return ":" + m_keyword;};
     virtual bool is_keyword() {return true;};
     virtual std::string as_keyword() {return this->to_str();};
 protected:
@@ -153,7 +153,7 @@ class MalString: public MalAtom
 {
 public:
     MalString(std::string str): MalAtom(MAL_STRING), m_string(str) {};
-    virtual std::string to_str() {return m_string;};
+    virtual std::string to_str(bool print_readably = false);
     virtual bool is_string() {return true;};
     virtual std::string as_string() {return m_string;};
 protected:
@@ -165,7 +165,7 @@ class MalBoolean: public MalAtom
 {
 public:
     MalBoolean(bool tof): MalAtom(MAL_BOOLEAN), m_boolean(tof) {};
-    virtual std::string to_str() {return m_boolean ? "true" : "false";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return m_boolean ? "true" : "false";};
     virtual bool is_boolean() {return true;};
 protected:
     bool m_boolean;
@@ -184,8 +184,7 @@ class MalPair: public MalCollection, public std::enable_shared_from_this<MalPair
 {
 public:
     MalPair(MalPtr car=nullptr, MalPtr cdr=nullptr): MalCollection(MAL_PAIR), m_car(car), m_cdr(cdr) {};
-    virtual std::string to_str();
-    virtual std::string to_str_continued();
+    virtual std::string to_str(bool print_readably = false);
     virtual bool is_null() {return (m_car == nullptr && m_cdr == nullptr);};
     virtual bool is_pair() {return true;};
     virtual bool is_list() {return (m_cdr == nullptr || m_cdr->is_pair());};
@@ -196,6 +195,7 @@ public:
     virtual MalPtr cdr() {return m_cdr;};
     virtual void add(MalPtr addition);       // inserts an element at the end of the list
 protected:
+    virtual std::string to_str_continued(bool print_readably = false);
     MalPtr m_car, m_cdr;
 };
 
@@ -204,9 +204,9 @@ class MalVector: public MalCollection
 {
 public:
     MalVector(): MalCollection(MAL_VECTOR) {};
-    MalVector(PairPtr value_list);
-    MalVector(const InternalVector& value_list);
-    virtual std::string to_str();
+    MalVector(const InternalVector& v): MalCollection(MAL_VECTOR), m_vector(v) {};
+    MalVector(MalPtr value);
+    virtual std::string to_str(bool print_readably = false);
     virtual size_t size() {return m_vector.size();};
     virtual bool is_vector() {return true;};
 protected:
@@ -218,8 +218,10 @@ class MalHashmap: public MalCollection
 {
 public:
     MalHashmap(): MalCollection(MAL_HASHMAP) {};
-    MalHashmap(PairPtr value_list);
-    virtual std::string to_str();
+    MalHashmap(const InternalHashmap& hm): MalCollection(MAL_HASHMAP), m_hashmap(hm) {};
+    MalHashmap(MalPtr key, MalPtr value);
+    MalHashmap(MalPtr value_list);
+    virtual std::string to_str(bool print_readably = false);
     virtual size_t size() {return m_hashmap.size();};
     virtual bool is_hashmap() {return true;};
 protected:
@@ -240,8 +242,9 @@ class MalInteger: public MalNumber
 {
 public:
     MalInteger(mpz_class value): MalNumber(MAL_INTEGER), m_value(value) {};
+    MalInteger(MalPtr value);
     virtual bool is_integer() {return true;};
-    virtual std::string to_str() {return m_value.get_str();};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return m_value.get_str();};
     virtual mpz_class as_integer() {return m_value;};
 protected:
     mpz_class m_value;
@@ -252,8 +255,9 @@ class MalRational: public MalNumber
 {
 public:
     MalRational(mpq_class value): MalNumber(MAL_RATIONAL), m_value(value) {};
+    MalRational(MalPtr value);
     virtual bool is_rational() {return true;};
-    virtual std::string to_str() {return m_value.get_str();};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return m_value.get_str();};
     virtual mpq_class as_rational() {return m_value;};
 protected:
     mpq_class m_value;
@@ -264,8 +268,9 @@ class MalFractional: public MalNumber
 {
 public:
     MalFractional(mpf_class value): MalNumber(MAL_FRACTIONAL), m_value(value) {};
+    MalFractional(MalPtr value);
     virtual bool is_fractional() {return true;};
-    virtual std::string to_str();
+    virtual std::string to_str(bool print_readably = false);
     virtual mpf_class as_fractional() {return m_value;};
 protected:
     mpf_class m_value;
@@ -276,8 +281,9 @@ class MalComplex: public MalNumber
 {
 public:
     MalComplex(complex_mpf value): MalNumber(MAL_COMPLEX), m_value(value) {};
+    MalComplex(MalPtr value);
     virtual bool is_complex() {return true;};
-    virtual std::string to_str();
+    virtual std::string to_str(bool print_readably = false);
     virtual complex_mpf as_complex() {return m_value;};
 protected:
     complex_mpf m_value;
@@ -330,7 +336,7 @@ class MalPeriod: public MalObject
 {
 public:
     MalPeriod(): MalObject(MAL_PERIOD) {};
-    virtual std::string to_str() {return ".";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return ".";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -340,7 +346,7 @@ class MalComma: public MalObject
 {
 public:
     MalComma(): MalObject(MAL_COMMA) {};
-    virtual std::string to_str() {return ",";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return ",";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -350,7 +356,7 @@ class MalReaderMacro: public MalObject
 {
 public:
     MalReaderMacro(MalType type, MalPtr arg): MalObject(type), m_arg(arg) {};
-    virtual std::string to_str() {return "<reader-macro>";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "<reader-macro>";};
     virtual bool is_syntax() {return true;};
 protected:
     MalPtr m_arg;
@@ -361,7 +367,7 @@ class MalQuote: public MalReaderMacro
 {
 public:
     MalQuote(MalPtr arg): MalReaderMacro(MAL_QUOTE, arg) {};
-    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quote " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -371,7 +377,7 @@ class MalQuasiquote: public MalReaderMacro
 {
 public:
     MalQuasiquote(MalPtr arg): MalReaderMacro(MAL_QUASIQUOTE, arg) {};
-    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quote " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -381,7 +387,7 @@ class MalUnquote: public MalReaderMacro
 {
 public:
     MalUnquote(MalPtr arg): MalReaderMacro(MAL_UNQUOTE, arg) {};
-    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quote " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -391,7 +397,7 @@ class MalSpliceUnquote: public MalReaderMacro
 {
 public:
     MalSpliceUnquote(MalPtr arg): MalReaderMacro(MAL_SPLICE_UNQUOTE, arg) {};
-    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quote " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -401,7 +407,7 @@ class MalDeref: public MalReaderMacro
 {
 public:
     MalDeref(MalPtr arg): MalReaderMacro(MAL_DEREF, arg) {};
-    virtual std::string to_str() {return "(quote " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quote " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -411,7 +417,7 @@ class MalMeta: public MalReaderMacro
 {
 public:
     MalMeta(MalPtr applicant, MalPtr meta): MalReaderMacro(MAL_META, meta), m_applicant(applicant) {};
-    virtual std::string to_str() {return "(with-meta " + m_applicant->to_str() + " " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(with-meta " + m_applicant->to_str() + " " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 protected:
     MalPtr m_applicant;

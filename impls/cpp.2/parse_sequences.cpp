@@ -19,13 +19,15 @@ MalPtr read_list(std::string input_stream)
 
 void close_list()
 {
+    
     if (paren_count > 0)
     {
+        std::cout << "closing list" << std::endl;
         paren_count--;
     }
     else
     {
-        throw new UnbalancedParenthesesException();
+        throw UnbalancedParenthesesException();
     }
 }
 
@@ -46,7 +48,7 @@ void close_vector()
     }
     else
     {
-        throw new UnbalancedVectorException();
+        throw UnbalancedVectorException();
     }
 }
 
@@ -67,6 +69,6 @@ void close_hashmap()
     }
     else
     {
-        throw new UnbalancedHashmapException();
+        throw UnbalancedHashmapException();
     }
 }

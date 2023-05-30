@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include "types.h"
 
+
 std::string mal_type_name[] =
 {
     "Object",
@@ -26,13 +27,13 @@ std::string mal_type_name[] =
 };
 
 
-std::string MalPair::to_str()
+std::string MalPair::to_str(bool print_readably)
 {
-    return "(" + to_str_continued() +  ")";
+    return "(" + to_str_continued(print_readably) +  ")";
 }
 
 
-std::string MalPair::to_str_continued()
+std::string MalPair::to_str_continued(bool print_readably)
 {
     // handle CAR pointer
     if (m_car == nullptr)
@@ -43,7 +44,7 @@ std::string MalPair::to_str_continued()
         }
         else
         {
-            return "()" + m_cdr->to_str();
+            return "()" + m_cdr->to_str(print_readably);
         }
     }
     else if (m_cdr == nullptr)
@@ -59,24 +60,24 @@ std::string MalPair::to_str_continued()
         {
             if (cadr == nullptr)
             {
-                return m_car->to_str();
+                return m_car->to_str(print_readably);
             }
             else
             {
-                return m_car->to_str() + " " + cadr->to_str();
+                return m_car->to_str(print_readably) + " " + cadr->to_str();
             }
         }
         else if (cddr->type() == MAL_PAIR)
         {
             if (cadr->type() == MAL_PAIR)
             {
-                return m_car->to_str() + " . " + m_cdr->to_str();
+                return m_car->to_str(print_readably) + " . " + m_cdr->to_str(print_readably);
             }
             else
             {
                 PairPtr cddr_pair = cddr->as_pair();
                 return m_car->to_str()
-                       + " " + cadr->to_str()
+                       + " " + cadr->to_str(print_readably)
                        + ((cddr_pair->car() == nullptr)
                           ? ""
                           : " " + cddr_pair->to_str_continued());
@@ -86,21 +87,21 @@ std::string MalPair::to_str_continued()
         {
             if (m_car->type() == MAL_PAIR)
             {
-                return m_car->to_str()
-                    + " . " + m_cdr->to_str();
+                return m_car->to_str(print_readably)
+                    + " . " + m_cdr->to_str(print_readably);
             }
             else
             {
-                return m_car->to_str()
-                    + " " + cadr->to_str()
+                return m_car->to_str(print_readably)
+                    + " " + cadr->to_str(print_readably)
                     + " . "
-                    + cddr->to_str();
+                    + cddr->to_str(print_readably);
             }
         }
     }
     else
     {
-        return m_car->to_str() + " . " + m_cdr->to_str();
+        return m_car->to_str(print_readably) + " . " + m_cdr->to_str(print_readably);
     }
 }
 
@@ -201,46 +202,57 @@ void MalPair::add(MalPtr addition)
 
 
 
-MalVector::MalVector(PairPtr value_list): MalCollection(MAL_VECTOR)
+MalVector::MalVector(MalPtr value): MalCollection(MAL_VECTOR)
 {
-    if (value_list != nullptr && value_list->size() > 0)
+    if (value != nullptr)
     {
-        if (value_list->car() != nullptr)
+        switch (value->type())
         {
-            m_vector.push_back(value_list->car());
-        }
+            case MAL_PAIR:
+                {
+                    PairPtr value_list = value->as_pair();
+                    if (value_list->car() != nullptr)
+                    {
+                        m_vector.push_back(value_list->car());
+                    }
 
-        if (value_list->cdr() != nullptr && value_list->cdr()->type() == MAL_PAIR)
-        {
-            for (auto next = value_list->cdr()->as_pair(); next != nullptr; next = next->cdr()->as_pair())
-            {
-                if (next->car() != nullptr)
-                {
-                    m_vector.push_back(next->car());
-                }
+                    if (value_list->cdr() != nullptr && value_list->cdr()->type() == MAL_PAIR)
+                    {
+                        for (auto next = value_list->cdr()->as_pair(); next != nullptr; next = next->cdr()->as_pair())
+                        {
+                            if (next->car() != nullptr)
+                            {
+                                m_vector.push_back(next->car());
+                            }
 
-                if (next->cdr() == nullptr)
-                {
-                    break;
+                            if (next->cdr() == nullptr)
+                            {
+                                break;
+                            }
+                            else if (next->cdr()->type() != MAL_PAIR)
+                            {
+                                m_vector.push_back(next->cdr());
+                                break;
+                            }
+                        }
+                    }
                 }
-                else if (next->cdr()->type() != MAL_PAIR)
-                {
-                    m_vector.push_back(next->cdr());
-                    break;
-                }
-            }
+                break;
+            default:
+                m_vector.push_back(value);
+                break;
         }
     }
 }
 
 
-std::string MalVector::to_str()
+std::string MalVector::to_str(bool print_readably)
 {
     std::string s = "[";
 
     for (size_t i = 0; i < m_vector.size(); ++i)
     {
-        s += m_vector[i]->to_str();
+        s += m_vector[i]->to_str(print_readably);
         if (i < m_vector.size()-1)
         {
             s += " ";
@@ -252,34 +264,107 @@ std::string MalVector::to_str()
 }
 
 
-MalHashmap::MalHashmap(PairPtr hm): MalCollection(MAL_HASHMAP)
+MalHashmap::MalHashmap(MalPtr hm): MalCollection(MAL_HASHMAP)
 {
+    if (hm == nullptr || hm->type() != MAL_PAIR)
+    {
+        throw InvalidHashmapException();
+    }
     if (hm->size() > 0)
     {
         if (hm->size() % 2)
         {
-            throw new InvalidHashmapException();
+            throw InvalidHashmapException();
         }
 
-        MalPair map = *hm;
+        PairPtr map = hm->as_pair();
         for (unsigned int i = 0; i < hm->size()-1; i+=2)
         {
-            MalPtr key = map[i];
-            MalPtr value = map[i+1];
+            MalPtr key = (*map)[i];
+            MalPtr value = (*map)[i+1];
             if ((key->type() == MAL_STRING) || (key->type() == MAL_KEYWORD))
             {
                 m_hashmap.emplace(key, value);
             }
             else
             {
-                throw new InvalidHashmapException();
+                throw InvalidHashmapException();
             }
         }
     }
 }
 
 
-std::string MalHashmap::to_str()
+std::string MalString::to_str(bool print_readably)
+{
+    if (print_readably)
+    {
+        std::string s = "\"";
+
+        for (size_t i = 0; i < m_string.length(); i++)
+        {
+            char ch = m_string[i];
+
+            switch (ch)
+            {
+                case '\\':
+                case '\"':
+                {
+                    s += '\\';
+                    s += ch;
+                }
+                    break;
+                case '\n':
+                {
+                    s += '\\';
+                    s += 'n';
+                }
+                    break;
+                case '\t':
+                    {
+                    s += '\\';
+                    s += 't';
+                    }
+                    break;
+                default:
+                {
+                    s += ch;
+                }
+            }
+        }
+
+        return s + "\"";
+    }
+    else
+    {
+        return m_string;
+    }
+}
+
+
+
+
+
+
+MalHashmap::MalHashmap(MalPtr key, MalPtr value): MalCollection(MAL_HASHMAP)
+{
+    if (key == nullptr || value == nullptr)
+    {
+        throw InvalidHashmapException();
+    }
+
+    if ((key->type() == MAL_STRING) || (key->type() == MAL_KEYWORD))
+    {
+        m_hashmap.emplace(key, value);
+    }
+    else
+    {
+        throw InvalidHashmapException();
+    }
+}
+
+
+std::string MalHashmap::to_str(bool print_readably)
 {
     std::string s = "{";
 
@@ -293,22 +378,22 @@ std::string MalHashmap::to_str()
         auto value = it->second;
         if (key->type() == MAL_STRING)
         {
-            s += "\"" + key->to_str() + "\"";
+            s += "\"" + key->to_str(print_readably) + "\"";
         }
         else
         {
-            s += key->to_str();
+            s += key->to_str(print_readably);
         }
         s += " ";
         if (value->type() == MAL_STRING)
         {
-            s += "\"" + value->to_str() + "\"";
+            s += "\"" + value->to_str(print_readably) + "\"";
         }
         else
         {
-            s += value->to_str();
+            s += value->to_str(print_readably);
         }
-         value->to_str();
+         value->to_str(print_readably);
     }
 
     s += "}";
@@ -318,8 +403,10 @@ std::string MalHashmap::to_str()
 
 
 
-std::string MalFractional::to_str()
+std::string MalFractional::to_str(bool print_readably)
 {
+    if (print_readably) {};  // discard the value of print_readably
+
     mp_exp_t decimal;
     std::string v = m_value.get_str(decimal);
     if (m_value < 0)
@@ -334,8 +421,10 @@ std::string MalFractional::to_str()
 
 
 
-std::string MalComplex::to_str()
+std::string MalComplex::to_str(bool print_readably)
 {
+    if (print_readably) {};  // discard the value of print_readably
+
     mp_exp_t real_decimal;
     std::string v = m_value.real().get_str(real_decimal);
 
@@ -369,4 +458,56 @@ std::string MalComplex::to_str()
 
     std::string imag_repr = v.substr(0, imag_decimal) + imag_mantissa;
     return real_repr + (m_value.imag() < 0 ? "" : "+") + imag_repr + 'i';
+}
+
+
+MalInteger::MalInteger(MalPtr value): MalNumber(MAL_INTEGER)
+{
+    if (value == nullptr || !value->is_integer())
+    {
+        throw InvalidIntegerException(value->to_str());
+    }
+    else
+    {
+        m_value = value->as_integer();
+    }
+}
+
+
+MalRational::MalRational(MalPtr value): MalNumber(MAL_RATIONAL)
+{
+    if (value == nullptr || !value->is_rational())
+    {
+        throw InvalidRationalNumberException(value->to_str());
+    }
+    else
+    {
+        m_value = value->as_rational();
+    }
+}
+
+
+MalFractional::MalFractional(MalPtr value): MalNumber(MAL_FRACTIONAL)
+{
+    if (value == nullptr || !value->is_fractional())
+    {
+        throw InvalidFractionalNumberException(value->to_str());
+    }
+    else
+    {
+        m_value = value->as_fractional();
+    }
+}
+
+
+MalComplex::MalComplex(MalPtr value): MalNumber(MAL_COMPLEX)
+{
+    if (value == nullptr || !value->is_complex())
+    {
+        throw InvalidComplexNumberException(value->to_str());
+    }
+    else
+    {
+        m_value = value->as_complex();
+    }
 }

@@ -14,19 +14,19 @@
 #include "exceptions.h"
 
 
-MalPtr READ(std::string input)
+Reader READ(std::string input)
 {
     return read_str(input);
 }
 
 
-MalPtr EVAL(TokenVector input)
+Reader EVAL(Reader input)
 {
     return input;
 }
 
 
-std::string PRINT(TokenVector input)
+std::string PRINT(Reader input)
 {
     return pr_str(input, true);
 }
@@ -65,6 +65,10 @@ int main()
         catch(UnbalancedParenthesesException& e)
         {
             std::cout << "(EOF|end of input|unbalanced)." << '\n';
+        }
+        catch (InvalidTokenStreamException& e)
+        {
+            std::cout << "(no tokens to print.)" << '\n';
         }
         catch(UnbalancedVectorException& e)
         {
