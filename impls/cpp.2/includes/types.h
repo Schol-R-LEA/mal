@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <gmpxx.h>
 #include "exceptions.h"
+#include "token_types.h"
 
 
 class Environment;
@@ -30,7 +31,7 @@ enum MalType
     MAL_ATOM, MAL_SYMBOL, MAL_KEYWORD,
     MAL_STRING, MAL_BOOLEAN,
     MAL_COLLECTION, MAL_PAIR, MAL_VECTOR, MAL_HASHMAP,
-    Mal_NUMBER, MAL_INTEGER, MAL_FRACTIONAL, MAL_RATIONAL, MAL_COMPLEX,
+    MAL_NUMBER, MAL_INTEGER, MAL_FRACTIONAL, MAL_RATIONAL, MAL_COMPLEX,
     MAL_PROCEDURE, MAL_PRIMITIVE, MAL_REST_ARG,
     MAL_PERIOD, MAL_COMMA,
     MAL_READER_MACRO, MAL_QUOTE, MAL_QUASIQUOTE,
@@ -65,6 +66,36 @@ typedef std::unordered_map<MalPtr, MalPtr> InternalHashmap;
 // Complex type
 typedef std::complex<mpf_class> complex_mpf;
 
+
+
+inline bool is_mal_numeric(MalType type)
+{
+    return (type == MAL_NUMBER
+            || type == MAL_INTEGER
+            || type == MAL_FRACTIONAL
+            || type == MAL_RATIONAL
+            || type == MAL_COMPLEX);
+}
+
+inline bool is_mal_container(MalType type)
+{
+    return (type == MAL_PAIR
+            || type == MAL_VECTOR
+            || type == MAL_HASHMAP);
+}
+
+
+inline bool is_mal_reader_macro(MalType type)
+{
+    return (type == MAL_READER_MACRO
+            || type == MAL_QUOTE
+            || type == MAL_QUASIQUOTE
+            || type == MAL_UNQUOTE
+            || type == MAL_SPLICE_UNQUOTE
+            || type == MAL_DEREF
+            || type == MAL_META
+            );
+}
 
 
 class MalObject

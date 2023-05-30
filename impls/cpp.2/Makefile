@@ -7,15 +7,15 @@ LIBS=-lreadline -lgmpxx -lgmp
 step0_repl: step0_repl.cpp lineedit
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) step0_repl.cpp $(BIN)/lineedit.o -o $(BIN)/step0_repl
 
-step1_read_print: step1_read_print.cpp lineedit reader printer types parse_numbers parse_sequences parse_reader_macros
+step1_read_print: step1_read_print.cpp lineedit reader printer types parse_numbers parse_sequences parse_reader_macros tokenizer
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) step1_read_print.cpp \
-$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/types.o $(BIN)/printer.o \
+$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/tokenizer.o $(BIN)/types.o $(BIN)/printer.o \
 $(BIN)/parse_numbers.o $(BIN)/parse_sequences.o $(BIN)/parse_reader_macros.o \
 -o $(BIN)/step1_read_print
 
 step2_eval: step2_eval.cpp lineedit reader printer types parse_numbers parse_sequences parse_reader_macros eval env apply core
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) step2_eval.cpp \
-$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/types.o $(BIN)/printer.o \
+$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/tokenizer.o $(BIN)/types.o $(BIN)/printer.o \
 $(BIN)/parse_numbers.o $(BIN)/parse_sequences.o $(BIN)/parse_reader_macros.o \
 $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 -o $(BIN)/step2_eval
@@ -23,7 +23,7 @@ $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 
 step3_env: step3_env.cpp lineedit reader printer types parse_numbers parse_sequences parse_reader_macros eval env apply core
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) step3_env.cpp \
-$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/types.o $(BIN)/printer.o \
+$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/tokenizer.o $(BIN)/types.o $(BIN)/printer.o \
 $(BIN)/parse_numbers.o $(BIN)/parse_sequences.o $(BIN)/parse_reader_macros.o \
 $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 -o $(BIN)/step3_env
@@ -32,7 +32,7 @@ $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 
 step4_if_fn_do: step4_if_fn_do.cpp lineedit reader printer types parse_numbers parse_sequences parse_reader_macros eval env apply core
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) step4_if_fn_do.cpp \
-$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/types.o $(BIN)/printer.o \
+$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/tokenizer.o $(BIN)/types.o $(BIN)/printer.o \
 $(BIN)/parse_numbers.o $(BIN)/parse_sequences.o $(BIN)/parse_reader_macros.o \
 $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 -o $(BIN)/step4_if_fn_do
@@ -41,7 +41,7 @@ $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 
 step5_tco: step5_tco.cpp lineedit reader printer types parse_numbers parse_sequences parse_reader_macros eval env apply core
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) step5_tco.cpp \
-$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/types.o $(BIN)/printer.o \
+$(BIN)/lineedit.o $(BIN)/reader.o $(BIN)/tokenizer.o $(BIN)/types.o $(BIN)/printer.o \
 $(BIN)/parse_numbers.o $(BIN)/parse_sequences.o $(BIN)/parse_reader_macros.o \
 $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 -o $(BIN)/step5_tco
@@ -64,20 +64,23 @@ env: env.cpp types
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) -c env.cpp -o $(BIN)/env.o
 
 
-printer: printer.cpp $(INC)/printer.h types
+printer: printer.cpp $(INC)/printer.h types tokenizer
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) -c printer.cpp -o $(BIN)/printer.o
 
 
-reader: reader.cpp $(INC)/reader.h lineedit types parse_numbers parse_sequences parse_reader_macros
+reader: reader.cpp $(INC)/reader.h lineedit types parse_numbers parse_sequences parse_reader_macros tokenizer
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) -c reader.cpp -o $(BIN)/reader.o
 
-parse_reader_macros: parse_reader_macros.cpp $(INC)/parse_reader_macros.h types
+tokenizer: reader.cpp $(INC)/reader.h lineedit types parse_numbers parse_sequences parse_reader_macros
+	$(CC) $(FLAGS) -I$(INC) $(LIBS) -c tokenizer.cpp -o $(BIN)/tokenizer.o
+
+parse_reader_macros: parse_reader_macros.cpp types
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) -c parse_reader_macros.cpp -o $(BIN)/parse_reader_macros.o
 
-parse_sequences: parse_sequences.cpp $(INC)/parse_sequences.h types
+parse_sequences: parse_sequences.cpp types
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) -c parse_sequences.cpp -o $(BIN)/parse_sequences.o
 
-parse_numbers: parse_numbers.cpp $(INC)/parse_numbers.h types
+parse_numbers: parse_numbers.cpp types
 	$(CC) $(FLAGS) -I$(INC) $(LIBS) -c parse_numbers.cpp -o $(BIN)/parse_numbers.o
 
 types: types.cpp $(INC)/types.h lineedit

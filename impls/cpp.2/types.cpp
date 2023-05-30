@@ -11,6 +11,7 @@
 #include <vector>
 #include <unordered_map>
 #include "types.h"
+#include "token_types.h"
 
 
 std::string mal_type_name[] =
@@ -22,7 +23,7 @@ std::string mal_type_name[] =
     "Number", "Integer", "Rational", "Fractional", "Complex",
     "Procedure", "Primitive", "Rest Arguments",
     "Quote", "Quasiquote",
-    "Unquote", "Splice-Unquote", "Deref", 
+    "Unquote", "Splice-Unquote", "Deref",
     "Meta"
 };
 
@@ -134,6 +135,7 @@ size_t MalPair::size()
 
     return index;
 }
+
 
 MalPtr MalPair::operator[](size_t index)
 {
@@ -457,7 +459,9 @@ std::string MalComplex::to_str(bool print_readably)
     }
 
     std::string imag_repr = v.substr(0, imag_decimal) + imag_mantissa;
-    return real_repr + (m_value.imag() < 0 ? "" : "+") + imag_repr + 'i';
+    std::string s = real_repr + (m_value.imag() < 0 ? "" : "+") + imag_repr + 'i';
+    std::cout << s << std::endl;
+    return s;
 }
 
 

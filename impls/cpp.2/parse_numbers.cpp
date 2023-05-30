@@ -7,10 +7,9 @@
 #include "types.h"
 #include "token_types.h"
 #include "exceptions.h"
-#include "parse_numbers.h"
 
 
-MalPtr read_number(std::string input_stream, char leading)
+MalPtr Tokenizer::read_number(std::string input_stream, char leading)
 {
     std::string s;
     char ch = leading;
@@ -34,7 +33,7 @@ MalPtr read_number(std::string input_stream, char leading)
 }
 
 
-MalPtr read_based_integer(std::string input_stream)
+MalPtr Tokenizer::read_based_integer(std::string input_stream)
 {
     std::string s = "0";
     char ch;
@@ -77,14 +76,15 @@ MalPtr read_based_integer(std::string input_stream)
             }
             else
             {
-                throw new InvalidNumberException(s);
+                throw InvalidNumberException(s);
             }
     }
 
-    return nullptr; 
+    return nullptr;
 }
 
-MalPtr read_trailing_zeroes(std::string input_stream)
+
+MalPtr Tokenizer::read_trailing_zeroes(std::string input_stream)
 {
     std::string s = "00";
     char ch = '0';
@@ -97,7 +97,7 @@ MalPtr read_trailing_zeroes(std::string input_stream)
     }
     if (!(ch == '0' || isspace(ch) || is_right_balanced(ch)))
     {
-        throw new InvalidNumberException(s + ch);
+        throw InvalidNumberException(s + ch);
     }
     else if (s_index < input_stream.length())
     {
@@ -113,7 +113,7 @@ MalPtr read_trailing_zeroes(std::string input_stream)
 
 
 
-MalPtr read_binary(std::string input_stream)
+MalPtr Tokenizer::read_binary(std::string input_stream)
 {
     std::string s = "0b";
     char ch = input_stream[s_index++];
@@ -126,7 +126,7 @@ MalPtr read_binary(std::string input_stream)
 
     if (!(is_binary(ch) || isspace(ch) || is_right_balanced(ch)))
     {
-        throw new InvalidBinaryNumberException(s + ch);
+        throw InvalidBinaryNumberException(s + ch);
     }
     else if (s_index < input_stream.length())
     {
@@ -137,11 +137,11 @@ MalPtr read_binary(std::string input_stream)
         s += ch;
     }
 
-    return std::make_shared<MalInteger>(mpz_class(s, 2));
+    return std::make_shared<MalInteger>(mpz_class(s.substr(2), 2));
 }
 
 
-MalPtr read_octal(std::string input_stream, char leading)
+MalPtr Tokenizer::read_octal(std::string input_stream, char leading)
 {
     std::string s = "0";
     char ch = leading;
@@ -154,7 +154,7 @@ MalPtr read_octal(std::string input_stream, char leading)
 
     if (!(is_octal(ch) || isspace(ch) || is_right_balanced(ch)))
     {
-        throw new InvalidOctalNumberException(s + ch);
+        throw InvalidOctalNumberException(s + ch);
     }
     else if (s_index < input_stream.length())
     {
@@ -169,7 +169,7 @@ MalPtr read_octal(std::string input_stream, char leading)
 }
 
 
-MalPtr read_hex(std::string input_stream)
+MalPtr Tokenizer::read_hex(std::string input_stream)
 {
     std::string s = "0x";
     char ch = input_stream[s_index++];
@@ -182,7 +182,7 @@ MalPtr read_hex(std::string input_stream)
 
     if (!(is_hex(ch) || isspace(ch) || is_right_balanced(ch)))
     {
-        throw new InvalidHexNumberException(s + ch);
+        throw InvalidHexNumberException(s + ch);
     }
     else if (s_index < input_stream.length())
     {
@@ -193,18 +193,22 @@ MalPtr read_hex(std::string input_stream)
         s += ch;
     }
 
-    return std::make_shared<MalInteger>(mpz_class(s, 16));
+    return std::make_shared<MalInteger>(mpz_class(s.substr(2), 16));
 }
 
 
-MalPtr read_decimal(std::string input_stream, char leading)
+MalPtr Tokenizer::read_decimal(std::string input_stream, char leading)
 {
     std::string s = "";
     char ch = leading;
 
-    if (ch == '-' || ch == '+')
+    if (ch == '-')
     {
         s += ch;
+        ch = input_stream[s_index++];
+    }
+    else if (ch == '+')
+    {
         ch = input_stream[s_index++];
     }
 
@@ -231,7 +235,7 @@ MalPtr read_decimal(std::string input_stream, char leading)
 
     if (!(isdigit(ch) || isspace(ch) || is_right_balanced(ch)  || ch == ','  || ch == ';'))
     {
-        throw new InvalidNumberException(s + ch);
+        throw InvalidNumberException(s + ch);
     }
     else if (s_index < input_stream.length() || isspace(ch) || is_right_balanced(ch) || ch == ','  || ch == ';')
     {
@@ -246,7 +250,7 @@ MalPtr read_decimal(std::string input_stream, char leading)
 }
 
 
-MalPtr read_fractional(std::string input_stream, std::string leading)
+MalPtr Tokenizer::read_fractional(std::string input_stream, std::string leading)
 {
     std::string s = leading + '.';
     char ch = input_stream[s_index++];
@@ -264,10 +268,10 @@ MalPtr read_fractional(std::string input_stream, std::string leading)
 
     if (!(isdigit(ch) || isspace(ch) || is_right_balanced(ch)  || ch == ','  || ch == ';'))
     {
-        throw new InvalidNumberException(s + ch);
+        throw InvalidNumberException(s + ch);
     }
-    else if (s_index < input_stream.length() || isspace(ch) || is_right_balanced(ch) || ch == ',')
-    { 
+    else if (s_index < input_stream.length() || isspace(ch) || is_right_balanced(ch) || ch == ',' || ch == ';')
+    {
         s_index--;
     }
     else
@@ -279,7 +283,7 @@ MalPtr read_fractional(std::string input_stream, std::string leading)
 }
 
 
-MalPtr read_rational(std::string input_stream, std::string leading)
+MalPtr Tokenizer::read_rational(std::string input_stream, std::string leading)
 {
     std::string s = leading;
     char ch = '/';
@@ -294,7 +298,7 @@ MalPtr read_rational(std::string input_stream, std::string leading)
 
     if (!(isdigit(ch) || isspace(ch) || is_right_balanced(ch)  || ch == ','  || ch == ';'))
     {
-        throw new InvalidNumberException(s + ch);
+        throw InvalidNumberException(s + ch);
     }
     else if (s_index < input_stream.length() || isspace(ch) || is_right_balanced(ch) || ch == ',')
     {
@@ -310,12 +314,15 @@ MalPtr read_rational(std::string input_stream, std::string leading)
 
 
 
-MalPtr read_complex(std::string input_stream, std::string leading, char trailing)
+MalPtr Tokenizer::read_complex(std::string input_stream, std::string leading, char trailing)
 {
-    std::string s = leading;
+    std::string s = "";
     char ch = trailing;
 
-    s += ch;
+    if (ch == '-')
+    {
+        s += ch;
+    }
     ch = input_stream[s_index++];
     while (isdigit(ch) && s_index < input_stream.length())
     {
@@ -332,7 +339,7 @@ MalPtr read_complex(std::string input_stream, std::string leading, char trailing
             }
             else
             {
-                throw new InvalidComplexNumberException(s);
+                throw InvalidComplexNumberException(s);
             }
             s += ch;
             ch = input_stream[s_index++];
@@ -345,6 +352,6 @@ MalPtr read_complex(std::string input_stream, std::string leading, char trailing
     }
     else
     {
-        throw new IncompleteComplexNumberException();
+        throw IncompleteComplexNumberException();
     }
 }

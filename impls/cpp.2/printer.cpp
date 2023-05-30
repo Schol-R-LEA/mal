@@ -11,6 +11,7 @@ std::string pr_str(Reader tokens, bool print_readably)
 
     for (auto token = tokens.next(); token != nullptr; token = tokens.next())
     {
+        std::cout << mal_type_name[token->type()] << ", " << token->to_str() << std::endl;
         s += token->to_str(print_readably);
     }
 

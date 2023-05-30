@@ -5,12 +5,10 @@
 #include "types.h"
 #include "token_types.h"
 #include "exceptions.h"
-#include "parse_numbers.h"
-#include "parse_sequences.h"
-#include "parse_reader_macros.h"
 
 
-MalPtr read_unquote(std::string input_stream)
+
+MalPtr Tokenizer::read_unquote(std::string input_stream)
 {
     char ch = input_stream[s_index++];
     if (ch == '@')
@@ -25,7 +23,7 @@ MalPtr read_unquote(std::string input_stream)
 }
 
 
-MalPtr read_meta(std::string input_stream)
+MalPtr Tokenizer::read_meta(std::string input_stream)
 {
     char ch = input_stream[s_index++];
     MalPtr seq_argument, main_argument;

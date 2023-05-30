@@ -7,23 +7,30 @@
 #include "types.h"
 #include "token_types.h"
 #include "exceptions.h"
-#include "parse_sequences.h"
 
 
-MalPtr read_list(std::string input_stream)
+MalPtr Tokenizer::read_list(std::string input_stream)
 {
-    paren_count++;
-    return tokenize(input_stream);
+    this->paren_count++;
+    std::cout << "opening paren " << this->paren_count << std::endl;
+    PairPtr list, curr_pair;
+
+    do
+    {
+        curr_pair = tokenize(input_stream);
+        list->add(curr_pair);
+    } while (curr_pair != nullptr);
+
+    return list;
 }
 
 
-void close_list()
+void Tokenizer::close_list()
 {
-    
-    if (paren_count > 0)
+    std::cout << "closing paren " << this->paren_count << std::endl;
+    if (this->paren_count > 0)
     {
-        std::cout << "closing list" << std::endl;
-        paren_count--;
+        this->paren_count--;
     }
     else
     {
@@ -32,19 +39,19 @@ void close_list()
 }
 
 
-MalPtr read_vector(std::string input_stream)
+MalPtr Tokenizer::read_vector(std::string input_stream)
 {
-    square_bracket_count++;
+    this->square_bracket_count++;
 
     return std::make_shared<MalVector>(tokenize(input_stream));
 }
 
 
-void close_vector()
+void Tokenizer::close_vector()
 {
-    if (square_bracket_count > 0)
+    if (this->square_bracket_count > 0)
     {
-        square_bracket_count--;
+        this->square_bracket_count--;
     }
     else
     {
@@ -53,19 +60,19 @@ void close_vector()
 }
 
 
-MalPtr read_hashmap(std::string input_stream)
+MalPtr Tokenizer::read_hashmap(std::string input_stream)
 {
-    hm_count++;
+    this->hm_count++;
 
     return std::make_shared<MalHashmap>(tokenize(input_stream));
 }
 
 
-void close_hashmap()
+void Tokenizer::close_hashmap()
 {
-    if (hm_count > 0)
+    if (this->hm_count > 0)
     {
-        hm_count--;
+        this->hm_count--;
     }
     else
     {
