@@ -72,24 +72,28 @@ TEST_SUITE("constructing atoms and lists")
         CHECK(test.is_atom() == false);
         CHECK(test.is_list() == true);
         CHECK(test.to_str() == "()");
+        CHECK(test.to_str(true) == "()");
     }
 
     TEST_CASE("nested null list")
     {
         MalPair test = MalPair(std::make_shared<MalPair>());
         CHECK(test.to_str() == "(())");
+        CHECK(test.to_str(true) == "(())");
     }
 
     TEST_CASE("double nested null list")
     {
         PairPtr test = std::make_shared<MalPair>(std::make_shared<MalPair>(std::make_shared<MalPair>()));
         CHECK(test->to_str() == "((()))");
+        CHECK(test->to_str(true) == "((()))");
     }
 
     TEST_CASE("paired nested null list")
     {
         PairPtr test = std::make_shared<MalPair>(std::make_shared<MalPair>(), std::make_shared<MalPair>(std::make_shared<MalPair>()));
         CHECK(test->to_str() == "(() ())");
+        CHECK(test->to_str(true) == "(() ())");
     }
 
 
@@ -97,6 +101,8 @@ TEST_SUITE("constructing atoms and lists")
     {
         PairPtr test = std::make_shared<MalPair>(std::make_shared<MalSymbol>("foo"));
         CHECK(test->is_null() == false);
+        CHECK(test->to_str() == "(foo)");
+        CHECK(test->to_str(true) == "(foo)");
         MalPtr test_car = test->car();
         CHECK(test_car->type() ==  MAL_SYMBOL);
         CHECK(test_car->as_symbol() == "foo");
@@ -111,6 +117,7 @@ TEST_SUITE("constructing atoms and lists")
         MalPtr test_cdr = test->cdr();
         CHECK(test_cdr->to_str() == "bar");
         CHECK(test->to_str() == "(foo . bar)");
+        CHECK(test->to_str(true) == "(foo . bar)");
     }
 
 
@@ -129,6 +136,7 @@ TEST_SUITE("constructing atoms and lists")
         test_num = test_cadr->as_integer();
         CHECK(test_num == 69);
         CHECK(test->to_str() == "(42 69)");
+        CHECK(test->to_str(true) == "(42 69)");
     }
 
 
@@ -266,6 +274,7 @@ TEST_SUITE("constructing atoms and lists")
         CHECK(test->to_str() == "(foo :bar 69)");
         test->add(std::make_shared<MalRational>(mpq_class("17/23")));
         CHECK(test->to_str() == "(foo :bar 69 17/23)");
+        CHECK(test->to_str(true) == "(foo :bar 69 17/23)");
     }
 
 
@@ -304,6 +313,17 @@ TEST_SUITE("constructing atoms and lists")
         CHECK(test.size() == 3);
     }
 
+    TEST_CASE("vector of four elements from appended list")
+    {
+        PairPtr test = std::make_shared<MalPair>();
+        test->add(std::make_shared<MalSymbol>("foo"));
+        test->add(std::make_shared<MalKeyword>("bar"));
+        test->add(std::make_shared<MalInteger>(69));
+        test->add(std::make_shared<MalRational>(mpq_class("17/23")));
+        MalVector test_vec(test);
+        CHECK(test_vec.to_str() == "[foo :bar 69 17/23]");
+        CHECK(test_vec.size() == 4);
+    }
 
 
     TEST_CASE("empty hashmap")

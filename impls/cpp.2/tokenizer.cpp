@@ -100,7 +100,16 @@ PairPtr Tokenizer::tokenize(std::string input_stream)
             }
         }
 
-        return std::make_shared<MalPair>(handle, tokenize(input_stream));
+        if (handle != nullptr)
+        {
+            MalPtr result = ((handle->type() == MAL_PAIR) ? handle : std::make_shared<MalPair>(handle));
+            result->as_pair()->add(tokenize(input_stream));
+            return result->as_pair();
+        }
+        else
+        {
+            return nullptr;
+        }
     }
     else
     {
@@ -115,22 +124,6 @@ MalPtr Tokenizer::read_form(std::string input_stream)
     return tokenize(input_stream);
 }
 
-
-
-void Tokenizer::read_whitespace(std::string input_stream, char leading)
-{
-    char ch = leading;
-    if (!isspace(ch)) return;
-
-    while (isspace(ch) && s_index < input_stream.length())
-    {
-        ch = input_stream[s_index++];
-    }
-    if (s_index < input_stream.length())
-    {
-        s_index--;
-    }
-}
 
 
 void Tokenizer::read_comment(std::string input_stream)

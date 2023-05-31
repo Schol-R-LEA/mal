@@ -9,6 +9,7 @@
 #include "exceptions.h"
 
 
+
 MalPtr Tokenizer::read_number(std::string input_stream, char leading)
 {
     std::string s;

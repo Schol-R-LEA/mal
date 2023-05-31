@@ -416,7 +416,7 @@ std::string MalFractional::to_str(bool print_readably)
         decimal++;
     }
 
-    std::string s = v.substr(0, decimal) + '.' + v.substr(decimal);
+    std::string s = v.substr(0, decimal) + '.' + (decimal == 0 ? "0" : v.substr(decimal));
 
     return s;
 }
@@ -460,7 +460,7 @@ std::string MalComplex::to_str(bool print_readably)
 
     std::string imag_repr = v.substr(0, imag_decimal) + imag_mantissa;
     std::string s = real_repr + (m_value.imag() < 0 ? "" : "+") + imag_repr + 'i';
-    std::cout << s << std::endl;
+
     return s;
 }
 

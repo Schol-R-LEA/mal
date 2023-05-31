@@ -408,7 +408,7 @@ class MalQuasiquote: public MalReaderMacro
 {
 public:
     MalQuasiquote(MalPtr arg): MalReaderMacro(MAL_QUASIQUOTE, arg) {};
-    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quote " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quasiquote " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -418,7 +418,7 @@ class MalUnquote: public MalReaderMacro
 {
 public:
     MalUnquote(MalPtr arg): MalReaderMacro(MAL_UNQUOTE, arg) {};
-    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quote " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(unquote " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -428,7 +428,7 @@ class MalSpliceUnquote: public MalReaderMacro
 {
 public:
     MalSpliceUnquote(MalPtr arg): MalReaderMacro(MAL_SPLICE_UNQUOTE, arg) {};
-    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quote " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(splice-unquote " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 };
 
@@ -438,7 +438,7 @@ class MalDeref: public MalReaderMacro
 {
 public:
     MalDeref(MalPtr arg): MalReaderMacro(MAL_DEREF, arg) {};
-    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(quote " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(deref " + m_arg->to_str()  + ")";};
     virtual bool is_syntax() {return true;};
 };
 

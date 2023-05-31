@@ -37,7 +37,6 @@ public:
 
     MalPtr read_form(std::string input_stream);
 
-    void read_whitespace(std::string input_stream, char leading);
     void read_comment(std::string input_stream);
 
     MalPtr read_string(std::string input_stream);
@@ -98,7 +97,7 @@ public:
 
         RM result(rm_argument);
 
-        return std::make_shared<MalReaderMacro>(result);
+        return std::make_shared<RM>(result);
     };
 
 private:

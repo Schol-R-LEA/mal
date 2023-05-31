@@ -28,13 +28,14 @@ MalPtr Reader::next()
     {
         if (m_current_token->type() == MAL_PAIR)
         {
-            m_current_token = m_current_token->as_pair()->cdr();
+            m_current_token = m_current_token->as_pair()->car();
         }
         else
         {
             m_current_token = nullptr;
         }
     }
+
     return result;
  }
 

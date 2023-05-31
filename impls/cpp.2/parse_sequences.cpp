@@ -12,15 +12,8 @@
 MalPtr Tokenizer::read_list(std::string input_stream)
 {
     this->paren_count++;
-    PairPtr list, curr_pair;
 
-    do
-    {
-        curr_pair = tokenize(input_stream);
-        list->add(curr_pair);
-    } while (curr_pair != nullptr);
-
-    return list;
+    return std::make_shared<MalPair>(tokenize(input_stream));
 }
 
 
