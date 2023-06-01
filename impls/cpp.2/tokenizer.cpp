@@ -102,8 +102,17 @@ PairPtr Tokenizer::tokenize(std::string input_stream)
 
         if (handle != nullptr)
         {
-            MalPtr result = ((handle->type() == MAL_PAIR) ? handle : std::make_shared<MalPair>(handle));
-            result->as_pair()->add(tokenize(input_stream));
+            MalPtr result;
+            // result = std::make_shared<MalPair>(handle, tokenize(input_stream));
+            if (is_mal_container(handle->type()))
+            {
+                result = handle;
+            }
+            else
+            {
+                result = std::make_shared<MalPair>(handle, tokenize(input_stream));
+            }
+
             return result->as_pair();
         }
         else

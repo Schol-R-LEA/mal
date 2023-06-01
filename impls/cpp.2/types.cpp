@@ -404,7 +404,6 @@ std::string MalHashmap::to_str(bool print_readably)
 
 
 
-
 std::string MalFractional::to_str(bool print_readably)
 {
     if (print_readably) {};  // discard the value of print_readably
