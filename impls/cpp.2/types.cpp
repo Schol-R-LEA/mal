@@ -22,6 +22,7 @@ std::string mal_type_name[] =
     "Collection", "Pair", "Vector", "Hashmap",
     "Number", "Integer", "Rational", "Fractional", "Complex",
     "Procedure", "Primitive", "Rest Arguments",
+    "Right Paren", "Right Square Bracket", "Right Brace", "Period", "Comma",
     "Quote", "Quasiquote",
     "Unquote", "Splice-Unquote", "Deref",
     "Meta"
@@ -50,7 +51,7 @@ std::string MalPair::to_str_continued(bool print_readably)
     }
     else if (m_cdr == nullptr)
     {
-     return m_car->to_str();
+        return m_car->to_str();
     }
     else if (m_cdr->type() == MAL_PAIR)
     {

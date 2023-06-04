@@ -36,19 +36,19 @@ PairPtr Tokenizer::tokenize(std::string input_stream)
                     handle = read_list(input_stream);
                     break;
                 case ')':
-                    close_list();
+                    handle = std::make_shared<MalRightParen>();
                     break;
                 case '[':
                     handle = read_vector(input_stream);
                     break;
                 case ']':
-                    close_vector();
+                    handle = std::make_shared<MalRightBracket>();
                     break;
                 case '{':
                     handle = read_hashmap(input_stream);
                     break;
                 case '}':
-                    close_hashmap();
+                    handle = std::make_shared<MalRightBrace>();
                     break;
                 case '&':
                     handle = std::make_shared<MalRestArg>();
@@ -103,8 +103,8 @@ PairPtr Tokenizer::tokenize(std::string input_stream)
         if (handle != nullptr)
         {
             MalPtr result;
-            // result = std::make_shared<MalPair>(handle, tokenize(input_stream));
-            if (is_mal_container(handle->type()))
+
+            if (handle->type() == MAL_PAIR)
             {
                 result = handle;
             }

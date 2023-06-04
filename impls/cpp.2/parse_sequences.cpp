@@ -9,25 +9,70 @@
 #include "exceptions.h"
 
 
+// MalPtr Tokenizer::read_list(std::string input_stream)
+// {
+//     this->paren_count++;
+
+//     return std::make_shared<MalPair>(tokenize(input_stream));
+// }
+
 MalPtr Tokenizer::read_list(std::string input_stream)
 {
-    this->paren_count++;
-
-    return std::make_shared<MalPair>(tokenize(input_stream));
-}
-
-
-void Tokenizer::close_list()
-{
-    if (this->paren_count > 0)
+    MalPtr head = tokenize(input_stream);
+    if (head == nullptr)
     {
-        this->paren_count--;
+        return std::make_shared<MalPair>();
+    }
+
+    if (head->type() == MAL_RIGHT_PAREN)
+    {
+        return std::make_shared<MalPair>();
+    }
+    else if (head->type() == MAL_PERIOD)
+    {
+        auto last = tokenize(input_stream);
+        // sanity check - is the next token a right parenthesis?
+        auto next = tokenize(input_stream);
+        if (next->type() != MAL_RIGHT_PAREN)
+        {
+            throw ImproperListException(next->to_str());
+        }
+        return last;
+    }
+
+    MalPtr tail = tokenize(input_stream);
+
+    if (tail == nullptr)
+    {
+        return std::make_shared<MalPair>(head);
+    }
+
+    if (tail->type() == MAL_PERIOD)
+    {
+        auto last = tokenize(input_stream);
+        MalPtr temp = std::make_shared<MalPair>(head, last);
+        // sanity check - is the next token a right parenthesis?
+        auto next = tokenize(input_stream);
+        if (next->type() != MAL_RIGHT_PAREN)
+        {
+            throw ImproperListException(next->to_str());
+        }
+        return temp;
+    }
+    if (tail->type() == MAL_RIGHT_PAREN)
+    {
+        return std::make_shared<MalPair>(head);
+    }
+    else if (tail->type() == MAL_PAIR)
+    {
+        return std::make_shared<MalPair>(head, std::make_shared<MalPair>(tail));
     }
     else
     {
-        throw UnbalancedParenthesesException();
+        return std::make_shared<MalPair>(head, std::make_shared<MalPair>(tail, read_list(input_stream)));
     }
 }
+
 
 
 MalPtr Tokenizer::read_vector(std::string input_stream)

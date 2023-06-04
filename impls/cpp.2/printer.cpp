@@ -14,6 +14,10 @@ std::string pr_str(Reader tokens, bool print_readably)
     {
         s += token->to_str(print_readably);
     }
+    else
+    {
+        s += "()";
+    }
 
     return s;
 }

@@ -33,7 +33,8 @@ enum MalType
     MAL_COLLECTION, MAL_PAIR, MAL_VECTOR, MAL_HASHMAP,
     MAL_NUMBER, MAL_INTEGER, MAL_FRACTIONAL, MAL_RATIONAL, MAL_COMPLEX,
     MAL_PROCEDURE, MAL_PRIMITIVE, MAL_REST_ARG,
-    MAL_PERIOD, MAL_COMMA,
+    MAL_RIGHT_PAREN, MAL_RIGHT_BRACKET, MAL_RIGHT_BRACE,
+     MAL_PERIOD, MAL_COMMA,
     MAL_READER_MACRO, MAL_QUOTE, MAL_QUASIQUOTE,
     MAL_UNQUOTE, MAL_SPLICE_UNQUOTE, MAL_DEREF,
     MAL_META
@@ -378,6 +379,36 @@ class MalComma: public MalObject
 public:
     MalComma(): MalObject(MAL_COMMA) {};
     virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return ",";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalRightParen: public MalObject
+{
+public:
+    MalRightParen(): MalObject(MAL_RIGHT_PAREN) {};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return ")";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalRightBracket: public MalObject
+{
+public:
+    MalRightBracket(): MalObject(MAL_RIGHT_BRACKET) {};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "]";};
+    virtual bool is_syntax() {return true;};
+};
+
+
+
+class MalRightBrace: public MalObject
+{
+public:
+    MalRightBrace(): MalObject(MAL_RIGHT_BRACE) {};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "}";};
     virtual bool is_syntax() {return true;};
 };
 

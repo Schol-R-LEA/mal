@@ -47,8 +47,14 @@ $(BIN)/eval.o $(BIN)/env.o $(BIN)/apply.o $(BIN)/core.o \
 -o $(BIN)/step5_tco
 
 
-test_expr_reading: tests/test-expr-reading.cpp types
-	$(CC) $(FLAGS) -I$(INC) $(LIBS) tests/test-expr-reading.cpp $(BIN)/types.o -o $(BIN)/test_expr_reading
+test_expr_reading: tests/test-expr-reading.cpp types reader
+	$(CC) $(FLAGS) -I$(INC) $(LIBS) tests/test-expr-reading.cpp \
+	$(BIN)/types.o $(BIN)/reader.o $(BIN)/tokenizer.o \
+	$(BIN)/parse_numbers.o $(BIN)/parse_sequences.o $(BIN)/parse_reader_macros.o \
+	-o $(BIN)/test_expr_reading
+
+test_expr_creating: tests/test-expr-creating.cpp types
+	$(CC) $(FLAGS) -I$(INC) $(LIBS) tests/test-expr-creating.cpp $(BIN)/types.o -o $(BIN)/test_expr_creating
 
 
 core: core.cpp types env apply
