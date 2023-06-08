@@ -203,6 +203,39 @@ void MalPair::add(MalPtr addition)
 }
 
 
+void MalPair::set_last(MalPtr last)
+{
+    if (m_car == nullptr)
+    {
+        if (m_cdr == nullptr)
+        {
+            // insert to the first element of the list
+            m_car = last;
+        }
+        else if (m_cdr->type() == MAL_PAIR)
+        {
+            // recurse over the list
+            m_cdr->as_pair()->set_last(last);
+        }
+    }
+    else if (m_cdr == nullptr)
+    {
+        // insert to the end of the list
+        m_cdr = last;
+    }
+    else
+    {
+        if (m_cdr->type() == MAL_PAIR)
+        {
+            // recurse over the list
+            m_cdr->as_pair()->set_last(last);
+        }
+        else
+        {
+            m_cdr = last;
+        }
+    }
+}
 
 
 MalVector::MalVector(MalPtr value): MalCollection(MAL_VECTOR)

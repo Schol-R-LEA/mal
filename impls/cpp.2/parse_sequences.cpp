@@ -3,6 +3,8 @@
 #include <vector>
 #include <cctype>
 #include <cstdlib>
+#include "includes/exceptions.h"
+#include "includes/types.h"
 #include "reader.h"
 #include "types.h"
 #include "token_types.h"
@@ -18,76 +20,109 @@
 
 MalPtr Tokenizer::read_list(std::string input_stream)
 {
+    paren_count++;
+    PairPtr result = std::make_shared<MalPair>();
+
     MalPtr head = tokenize(input_stream);
-    if (head == nullptr)
+    if (head == nullptr || head->type() == MAL_RIGHT_PAREN)
     {
-        return std::make_shared<MalPair>();
+        return result;
     }
 
-    if (head->type() == MAL_RIGHT_PAREN)
+    if (head->type() == MAL_PERIOD)
     {
-        return std::make_shared<MalPair>();
-    }
-    else if (head->type() == MAL_PERIOD)
-    {
-        auto last = tokenize(input_stream);
-        // sanity check - is the next token a right parenthesis?
-        auto next = tokenize(input_stream);
-        if (next->type() != MAL_RIGHT_PAREN)
-        {
-            throw ImproperListException(next->to_str());
-        }
-        return last;
+        throw ImproperListException(input_stream);
     }
 
-    MalPtr tail = tokenize(input_stream);
 
+    result->set_car(head);
+
+    auto tail = tokenize(input_stream);
     if (tail == nullptr)
     {
-        return std::make_shared<MalPair>(head);
+        return result;
+    }
+    while (true)
+    {
+        if (tail->type() == MAL_RIGHT_PAREN)
+        {
+            return result;
+        }
+        if (tail->type() == MAL_PERIOD)
+        {
+            auto next = tokenize(input_stream);
+
+            if (next->type() == MAL_RIGHT_PAREN)
+                // sanity check - is the next token a right parenthesis?
+            {
+                throw ImproperListException(input_stream);
+            }
+            else
+            {
+                result->set_last(next);
+                auto last = tokenize(input_stream);
+                if (last->type() != MAL_RIGHT_PAREN)
+                {
+                    throw ImproperListException(last->to_str());
+                }
+            }
+            return result;
+        }
+        else
+        {
+            result->add(tail);
+            auto next = tokenize(input_stream);
+            if (next == nullptr || (next->type() == MAL_RIGHT_PAREN))
+            {
+                return result;
+            }
+            else
+            {
+                tail = next;
+            }
+        }
     }
 
-    if (tail->type() == MAL_PERIOD)
+    return result;
+}
+
+
+
+MalPtr Tokenizer::close_list()
+{
+    if (this->paren_count > 0)
     {
-        auto last = tokenize(input_stream);
-        MalPtr temp = std::make_shared<MalPair>(head, last);
-        // sanity check - is the next token a right parenthesis?
-        auto next = tokenize(input_stream);
-        if (next->type() != MAL_RIGHT_PAREN)
-        {
-            throw ImproperListException(next->to_str());
-        }
-        return temp;
-    }
-    if (tail->type() == MAL_RIGHT_PAREN)
-    {
-        return std::make_shared<MalPair>(head);
-    }
-    else if (tail->type() == MAL_PAIR)
-    {
-        return std::make_shared<MalPair>(head, std::make_shared<MalPair>(tail));
+        this->paren_count--;
+        return std::make_shared<MalRightParen>();
     }
     else
     {
-        return std::make_shared<MalPair>(head, std::make_shared<MalPair>(tail, read_list(input_stream)));
+        throw UnbalancedVectorException();
     }
 }
-
 
 
 MalPtr Tokenizer::read_vector(std::string input_stream)
 {
     this->square_bracket_count++;
 
-    return std::make_shared<MalVector>(tokenize(input_stream));
+    VecPtr vec = std::make_shared<MalVector>();
+
+    for (auto token = tokenize(input_stream); token->type() != MAL_RIGHT_BRACKET; token = tokenize(input_stream))
+    {
+        vec->add(token);
+    }
+
+    return vec;
 }
 
 
-void Tokenizer::close_vector()
+MalPtr Tokenizer::close_vector()
 {
     if (this->square_bracket_count > 0)
     {
         this->square_bracket_count--;
+        return std::make_shared<MalRightBracket>();
     }
     else
     {
@@ -104,11 +139,12 @@ MalPtr Tokenizer::read_hashmap(std::string input_stream)
 }
 
 
-void Tokenizer::close_hashmap()
+MalPtr Tokenizer::close_hashmap()
 {
     if (this->hm_count > 0)
     {
         this->hm_count--;
+        return  std::make_shared<MalRightBrace>();
     }
     else
     {

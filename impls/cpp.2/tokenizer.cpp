@@ -9,7 +9,7 @@
 #include "exceptions.h"
 
 
-PairPtr Tokenizer::tokenize(std::string input_stream)
+MalPtr Tokenizer::tokenize(std::string input_stream)
 {
     char ch;
     MalPtr handle = nullptr;
@@ -36,7 +36,7 @@ PairPtr Tokenizer::tokenize(std::string input_stream)
                     handle = read_list(input_stream);
                     break;
                 case ')':
-                    handle = std::make_shared<MalRightParen>();
+                    handle = close_list();
                     break;
                 case '[':
                     handle = read_vector(input_stream);
@@ -100,25 +100,7 @@ PairPtr Tokenizer::tokenize(std::string input_stream)
             }
         }
 
-        if (handle != nullptr)
-        {
-            MalPtr result;
-
-            if (handle->type() == MAL_PAIR)
-            {
-                result = handle;
-            }
-            else
-            {
-                result = std::make_shared<MalPair>(handle, tokenize(input_stream));
-            }
-
-            return result->as_pair();
-        }
-        else
-        {
-            return nullptr;
-        }
+        return handle;
     }
     else
     {

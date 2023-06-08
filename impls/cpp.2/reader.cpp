@@ -43,7 +43,7 @@ MalPtr Reader::next()
 Reader read_str(std::string s)
 {
     Tokenizer tokenizer;
-    PairPtr tokens = tokenizer.tokenize(s);
+    MalPtr tokens = tokenizer.tokenize(s);
 
     if (!tokenizer.balanced_lists())
     {

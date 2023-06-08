@@ -13,13 +13,13 @@
 class Reader
 {
 public:
-    Reader(PairPtr tokens): m_current_token(tokens), m_tokens(tokens) {};
+    Reader(MalPtr tokens): m_current_token(tokens), m_tokens(tokens) {};
     MalPtr peek();
     MalPtr next();
 
 private:
     MalPtr m_current_token;
-    PairPtr m_tokens;
+    MalPtr m_tokens;
 };
 
 
@@ -30,7 +30,7 @@ class Tokenizer
 {
 public:
     Tokenizer(): paren_count(0), square_bracket_count(0), hm_count(0), s_index(0) {};
-    PairPtr tokenize(std::string input_stream);
+    MalPtr tokenize(std::string input_stream);
     bool balanced_lists() {return (paren_count == 0);};
     bool balanced_vectors() {return (square_bracket_count == 0);};
     bool balanced_hashmaps() {return (hm_count == 0);};
@@ -54,11 +54,11 @@ public:
     MalPtr read_complex(std::string input_stream, std::string leading, char trailing);
 
     MalPtr read_list(std::string input_stream);
-    void close_list();
+    MalPtr close_list();
     MalPtr read_vector(std::string input_stream);
-    void close_vector();
+    MalPtr close_vector();
     MalPtr read_hashmap(std::string input_stream);
-    void close_hashmap();
+    MalPtr close_hashmap();
 
     MalPtr read_unquote(std::string input_stream);
     MalPtr read_meta(std::string input_stream);

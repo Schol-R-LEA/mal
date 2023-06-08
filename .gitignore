@@ -22,5 +22,15 @@ GRTAGS
 logs
 old
 tmp/
+*.class
+*.pyc
 
 .vscode
+impls/.clang-format
+impls/java/target/classes/mal/core.class
+impls/.gitignore
+impls/java/target
+impls/python/__pycache__
+impls/.clang-tidy
+impls/.gitattributes
+impls/.editorconfig

@@ -57,6 +57,8 @@ class MalProcedure;
 
 typedef std::shared_ptr<MalObject> MalPtr;
 typedef std::shared_ptr<MalPair> PairPtr;
+typedef std::shared_ptr<MalVector> VecPtr;
+typedef std::shared_ptr<MalHashmap> MapPtr;
 
 // types for the internal representations for collection classes
 typedef std::vector<MalPtr> InternalVector;
@@ -133,8 +135,8 @@ public:
     virtual std::string as_keyword() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_KEYWORD]); return "";};
     virtual std::string as_symbol() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_SYMBOL]); return "";};
     virtual PairPtr as_pair() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_PAIR]); return nullptr;};
-    virtual InternalVector as_vector() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_VECTOR]); InternalVector v; return v;};
-    virtual InternalHashmap as_hashmap() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_HASHMAP]); InternalHashmap hm; return hm;};
+    virtual VecPtr as_vector() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_VECTOR]); return nullptr;};
+    virtual MapPtr as_hashmap() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_HASHMAP]); return nullptr;};
     virtual bool as_boolean() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_BOOLEAN]); return false;};
     virtual mpz_class as_integer() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_INTEGER]); return 0;};
     virtual mpq_class as_rational() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_INTEGER]); return 0;};
@@ -225,6 +227,9 @@ public:
     virtual MalPtr operator[](size_t index);
     virtual MalPtr car() {return m_car;};
     virtual MalPtr cdr() {return m_cdr;};
+    virtual void set_car(MalPtr car) {m_car = car;};
+    virtual void set_cdr(MalPtr cdr) {m_cdr = cdr;};
+    virtual void set_last(MalPtr last);
     virtual void add(MalPtr addition);       // inserts an element at the end of the list
 protected:
     virtual std::string to_str_continued(bool print_readably = false);
@@ -232,7 +237,7 @@ protected:
 };
 
 
-class MalVector: public MalCollection
+class MalVector: public MalCollection, public std::enable_shared_from_this<MalVector>
 {
 public:
     MalVector(): MalCollection(MAL_VECTOR) {};
@@ -241,12 +246,14 @@ public:
     virtual std::string to_str(bool print_readably = false);
     virtual size_t size() {return m_vector.size();};
     virtual bool is_vector() {return true;};
+    virtual VecPtr as_vector() {return shared_from_this();};
+    virtual void add(MalPtr token) {m_vector.push_back(token);};
 protected:
     InternalVector m_vector;
 };
 
 
-class MalHashmap: public MalCollection
+class MalHashmap: public MalCollection, public std::enable_shared_from_this<MalHashmap>
 {
 public:
     MalHashmap(): MalCollection(MAL_HASHMAP) {};
@@ -256,6 +263,7 @@ public:
     virtual std::string to_str(bool print_readably = false);
     virtual size_t size() {return m_hashmap.size();};
     virtual bool is_hashmap() {return true;};
+    virtual MapPtr as_hashmap() {return shared_from_this();};
 protected:
     InternalHashmap m_hashmap;
 };
