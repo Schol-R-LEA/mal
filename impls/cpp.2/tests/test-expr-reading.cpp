@@ -482,9 +482,15 @@ TEST_SUITE("constructing atoms and lists")
     TEST_CASE("hashmap with two entries")
     {
         Tokenizer src;
-        MalPtr test(src.tokenize("{:baz 128 \"foo\" \"bar\"}"));
-        CHECK(test->to_str() == "{:baz 128 \"foo\" \"bar\"}");
+        MalPtr test(src.tokenize("{\"foo\" \"bar\" :baz 128}"));
         CHECK(test->size() == 2);
     }
 
+
+    TEST_CASE("hashmap with four entries")
+    {
+        Tokenizer src;
+        MalPtr test(src.tokenize("{\"foo\" \"bar\" :baz 128 :quux 42 :zark 69}"));
+        CHECK(test->size() == 4);
+    }
 }

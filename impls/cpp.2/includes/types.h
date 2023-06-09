@@ -264,6 +264,9 @@ public:
     virtual size_t size() {return m_hashmap.size();};
     virtual bool is_hashmap() {return true;};
     virtual MapPtr as_hashmap() {return shared_from_this();};
+    virtual void add(MalPtr key, MalPtr value) {m_hashmap[key] = value;};
+    virtual bool operator==(const MalHashmap& hm) noexcept {return (m_hashmap == hm.m_hashmap);};
+    virtual MalPtr operator[](const MalPtr hm) {return m_hashmap[hm];};
 protected:
     InternalHashmap m_hashmap;
 };

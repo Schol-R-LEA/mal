@@ -429,7 +429,7 @@ std::string MalHashmap::to_str(bool print_readably)
         {
             s += value->to_str(print_readably);
         }
-         value->to_str(print_readably);
+        value->to_str(print_readably);
     }
 
     s += "}";
