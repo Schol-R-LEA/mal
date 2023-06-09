@@ -62,7 +62,7 @@ Reader read_str(std::string s)
         throw InvalidTokenStreamException();
     }
 
-    return Reader(tokens);
+    return Reader(std::make_shared<MalPair>(tokens));
 }
 
 

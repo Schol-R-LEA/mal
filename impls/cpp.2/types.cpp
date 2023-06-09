@@ -19,7 +19,7 @@ std::string mal_type_name[] =
     "Object",
     "Atom", "Symbol", "Keyword",
     "String", "Boolean",
-    "Collection", "Pair", "Vector", "Hashmap",
+    "Collection", "Nil", "Pair", "Vector", "Hashmap",
     "Number", "Integer", "Rational", "Fractional", "Complex",
     "Procedure", "Primitive", "Rest Arguments",
     "Right Paren", "Right Square Bracket", "Right Brace", "Period", "Comma",
@@ -66,7 +66,9 @@ std::string MalPair::to_str_continued(bool print_readably)
             }
             else
             {
-                return m_car->to_str(print_readably) + " " + cadr->to_str();
+                return m_car->to_str(print_readably)
+                       + (cadr->type() == MAL_COMMA ? "" : " ")
+                       + cadr->to_str(print_readably);
             }
         }
         else if (cddr->type() == MAL_PAIR)
@@ -79,10 +81,12 @@ std::string MalPair::to_str_continued(bool print_readably)
             {
                 PairPtr cddr_pair = cddr->as_pair();
                 return m_car->to_str()
-                       + " " + cadr->to_str(print_readably)
+                       + (cadr->type() == MAL_COMMA ? "" : " ")
+                       + cadr->to_str(print_readably)
                        + ((cddr_pair->car() == nullptr)
                           ? ""
-                          : " " + cddr_pair->to_str_continued());
+                          : (cddr_pair->car()->type() == MAL_COMMA ? "" : " ")
+                       + cddr_pair->to_str_continued());
             }
         }
         else
@@ -95,7 +99,7 @@ std::string MalPair::to_str_continued(bool print_readably)
             else
             {
                 return m_car->to_str(print_readably)
-                    + " " + cadr->to_str(print_readably)
+                    + (cadr->type() == MAL_COMMA ? "" : " ") + cadr->to_str(print_readably)
                     + " . "
                     + cddr->to_str(print_readably);
             }
@@ -289,7 +293,7 @@ std::string MalVector::to_str(bool print_readably)
     for (size_t i = 0; i < m_vector.size(); ++i)
     {
         s += m_vector[i]->to_str(print_readably);
-        if (i < m_vector.size()-1)
+        if (i < m_vector.size()-1  && m_vector[i]->type() != MAL_COMMA)
         {
             s += " ";
         }
@@ -414,7 +418,7 @@ std::string MalHashmap::to_str(bool print_readably)
         auto value = it->second;
         if (key->type() == MAL_STRING)
         {
-            s += "\"" + key->to_str(print_readably) + "\"";
+            s += key->to_str(print_readably);
         }
         else
         {
@@ -423,7 +427,7 @@ std::string MalHashmap::to_str(bool print_readably)
         s += " ";
         if (value->type() == MAL_STRING)
         {
-            s += "\"" + value->to_str(print_readably) + "\"";
+            s += value->to_str(print_readably);
         }
         else
         {

@@ -42,13 +42,13 @@ MalPtr Tokenizer::tokenize(std::string input_stream)
                     handle = read_vector(input_stream);
                     break;
                 case ']':
-                    handle = std::make_shared<MalRightBracket>();
+                    handle = close_vector();
                     break;
                 case '{':
                     handle = read_hashmap(input_stream);
                     break;
                 case '}':
-                    handle = std::make_shared<MalRightBrace>();
+                    handle = close_hashmap();
                     break;
                 case '&':
                     handle = std::make_shared<MalRestArg>();
@@ -200,7 +200,7 @@ MalPtr Tokenizer::read_symbol(std::string input_stream, char leading)
 
     if (s == "nil")
     {
-        return std::make_shared<MalPair>(nullptr, nullptr);
+        return std::make_shared<MalNil>();
     }
     else if (s == "true")
     {

@@ -12,7 +12,10 @@ std::string pr_str(Reader tokens, bool print_readably)
     auto token = tokens.next();
     if (token != nullptr)
     {
-        s += token->to_str(print_readably);
+        if (token->type() != MAL_COMMA)
+        {
+            s += token->to_str(print_readably);
+        }
     }
     else
     {

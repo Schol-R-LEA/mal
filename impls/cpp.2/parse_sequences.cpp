@@ -11,12 +11,6 @@
 #include "exceptions.h"
 
 
-// MalPtr Tokenizer::read_list(std::string input_stream)
-// {
-//     this->paren_count++;
-
-//     return std::make_shared<MalPair>(tokenize(input_stream));
-// }
 
 MalPtr Tokenizer::read_list(std::string input_stream)
 {
@@ -108,7 +102,9 @@ MalPtr Tokenizer::read_vector(std::string input_stream)
 
     VecPtr vec = std::make_shared<MalVector>();
 
-    for (auto token = tokenize(input_stream); token->type() != MAL_RIGHT_BRACKET; token = tokenize(input_stream))
+    for (auto token = tokenize(input_stream);
+         token != nullptr && token->type() != MAL_RIGHT_BRACKET;
+         token = tokenize(input_stream))
     {
         vec->add(token);
     }
@@ -138,11 +134,10 @@ MalPtr Tokenizer::read_hashmap(std::string input_stream)
     MapPtr hm = std::make_shared<MalHashmap>();
 
     for (auto key = tokenize(input_stream), value = tokenize(input_stream);
-         key->type() != MAL_RIGHT_BRACE;
+         key != nullptr && key->type() != MAL_RIGHT_BRACE;
          key = tokenize(input_stream), value = tokenize(input_stream))
     {
-        if (key == nullptr
-            || (key->type() != MAL_STRING && key->type() != MAL_KEYWORD))
+        if (key->type() != MAL_STRING && key->type() != MAL_KEYWORD)
         {
             throw InvalidHashmapException();
         }

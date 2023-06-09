@@ -30,7 +30,7 @@ enum MalType
     MAL_OBJECT,
     MAL_ATOM, MAL_SYMBOL, MAL_KEYWORD,
     MAL_STRING, MAL_BOOLEAN,
-    MAL_COLLECTION, MAL_PAIR, MAL_VECTOR, MAL_HASHMAP,
+    MAL_COLLECTION, MAL_NIL, MAL_PAIR, MAL_VECTOR, MAL_HASHMAP,
     MAL_NUMBER, MAL_INTEGER, MAL_FRACTIONAL, MAL_RATIONAL, MAL_COMPLEX,
     MAL_PROCEDURE, MAL_PRIMITIVE, MAL_REST_ARG,
     MAL_RIGHT_PAREN, MAL_RIGHT_BRACKET, MAL_RIGHT_BRACE,
@@ -214,6 +214,17 @@ public:
 };
 
 
+class MalNil: public MalCollection
+{
+public:
+    MalNil(): MalCollection(MAL_NIL) {};
+    virtual bool is_null() {return true;};
+    virtual bool is_pair() {return true;};
+    virtual bool is_list() {return true;};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "nil";};
+};
+
+
 class MalPair: public MalCollection, public std::enable_shared_from_this<MalPair>
 {
 public:
@@ -389,7 +400,7 @@ class MalComma: public MalObject
 {
 public:
     MalComma(): MalObject(MAL_COMMA) {};
-    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return ",";};
+    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "";};
     virtual bool is_syntax() {return true;};
 };
 
