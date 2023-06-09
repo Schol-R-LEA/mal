@@ -278,6 +278,7 @@ public:
     virtual void add(MalPtr key, MalPtr value) {m_hashmap[key] = value;};
     virtual bool operator==(const MalHashmap& hm) noexcept {return (m_hashmap == hm.m_hashmap);};
     virtual MalPtr operator[](const MalPtr hm) {return m_hashmap[hm];};
+    virtual void rehash() {m_hashmap.rehash(65535);};
 protected:
     InternalHashmap m_hashmap;
 };
@@ -501,7 +502,7 @@ class MalMeta: public MalReaderMacro
 {
 public:
     MalMeta(MalPtr applicant, MalPtr meta): MalReaderMacro(MAL_META, meta), m_applicant(applicant) {};
-    virtual std::string to_str(bool print_readably = false) {if (print_readably) {}; return "(with-meta " + m_applicant->to_str() + " " + m_arg->to_str()  + ")";};
+    virtual std::string to_str(bool print_readably = false) {return "(with-meta " + m_applicant->to_str(print_readably) + " " + m_arg->to_str(print_readably)  + ")";};
     virtual bool is_syntax() {return true;};
 protected:
     MalPtr m_applicant;

@@ -133,14 +133,15 @@ MalPtr Tokenizer::read_hashmap(std::string input_stream)
 
     MapPtr hm = std::make_shared<MalHashmap>();
 
-    for (auto key = tokenize(input_stream), value = tokenize(input_stream);
+    for (auto key = tokenize(input_stream);
          key != nullptr && key->type() != MAL_RIGHT_BRACE;
-         key = tokenize(input_stream), value = tokenize(input_stream))
+         key = tokenize(input_stream))
     {
         if (key->type() != MAL_STRING && key->type() != MAL_KEYWORD)
         {
             throw InvalidHashmapException();
         }
+        MalPtr value = tokenize(input_stream);
         if (value == nullptr
             || value->type() == MAL_RIGHT_BRACE
             || value->type() == MAL_RIGHT_PAREN
@@ -150,7 +151,7 @@ MalPtr Tokenizer::read_hashmap(std::string input_stream)
         }
         hm->add(key, value);
     }
-
+    hm->rehash();
     return hm;
 }
 

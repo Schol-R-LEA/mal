@@ -474,7 +474,7 @@ TEST_SUITE("constructing atoms and lists")
     {
         Tokenizer src;
         MalPtr test(src.tokenize("{\"foo\" \"bar\"}"));
-        CHECK(test->to_str() == "{\"foo\" \"bar\"}");
+        CHECK(test->to_str(true) == "{\"foo\" \"bar\"}");
         CHECK(test->size() == 1);
     }
 
@@ -484,6 +484,7 @@ TEST_SUITE("constructing atoms and lists")
         Tokenizer src;
         MalPtr test(src.tokenize("{\"foo\" \"bar\" :baz 128}"));
         CHECK(test->size() == 2);
+        CHECK(test->to_str(true) == "{\"foo\" \"bar\" :baz 128}");
     }
 
 
@@ -492,5 +493,6 @@ TEST_SUITE("constructing atoms and lists")
         Tokenizer src;
         MalPtr test(src.tokenize("{\"foo\" \"bar\" :baz 128 :quux 42 :zark 69}"));
         CHECK(test->size() == 4);
+        CHECK(test->to_str(true) == "{\"foo\" \"bar\" :baz 128 :quux 42 :zark 69}");
     }
 }
