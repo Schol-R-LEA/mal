@@ -18,7 +18,7 @@
 #include "eval.h"
 
 
-TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
+Reader EVAL(Reader input, Env_Frame& parent_env)
 {
     Env_Frame env = parent_env;
 
@@ -28,7 +28,7 @@ TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
         {
             throw new NullTokenException();
         }
-        if (input.empty())
+        if (input.is_empty())
         {
             env.pop();
             return input;
@@ -39,108 +39,115 @@ TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
         {
             return eval_ast(input, env);
         }
-        else if (type == MAL_LIST)
+        else if (type == MAL_PAIR)
         {
-            auto form = input.peek()->raw_value().car()->value();
+            auto temp_car = input.peek()->as_pair()->car();
+            if (temp_car == nullptr)
+            {
+                return temp_car;
+            }
+            auto form = temp_car->to_str();
 
             if (form == "def!")
             {
-                TokenVector temp;
-                temp.append(input.next()->raw_value());
-                auto result = eval_def(temp, env);
+                PairPtr temp;
+                temp->add(input.next()->as_pair());
+                Reader reader(temp);
+                auto result = eval_def(reader, env);
                 return result;
             }
             else if (form == "let*")
             {
-                TokenVector temp;
-                temp.append(input.next()->raw_value());
-                input = eval_let(temp, env);
+                PairPtr temp;
+                temp->add(input.next()->as_pair());
+                Reader reader(temp);
+                input = eval_let(reader, env);
             }
             else if (form == "do")
             {
-                TokenVector temp;
-                temp.append(input.next()->raw_value());
-                input = eval_do(temp, env);
+                PairPtr temp;
+                temp->add(input.next()->as_pair());
+                Reader reader(temp);
+                input = eval_do(reader, env);
             }
             else if (form == "if")
             {
-                TokenVector temp;
-                temp.append(input.next()->raw_value());
-                input = eval_if(temp, env);
+                PairPtr temp;
+                temp->add(input.next()->as_pair());
+                Reader reader(temp);
+                input = eval_if(reader, env);
             }
             else if (form == "fn*")
             {
-                TokenVector source;
-                source.append(input.next()->raw_value());
+                PairPtr source;
+                source->add(input.next()->as_pair()->cdr());  // skip the first "fn*" element
 
-                auto discard = source.next();    // discard the 'fn*' symbol
+                PairPtr parameters;
+                parameters->add(source->car());
 
-                TokenVector parameters;
-                parameters.append(source.next());
-
-                TokenVector body;
-                body = source.rest();
+                PairPtr body;
+                body = source->cdr()->as_pair();
                 Environment curr_env = env.top();
                 auto parent = std::make_shared<Environment>(curr_env);
 
-                TokenVector procedure;
-                procedure.append(std::make_shared<MalProcedure>(body, parameters, parent, parameters.size()));
-                return procedure;
+                PairPtr procedure;
+                procedure->add(std::make_shared<MalProcedure>(body, parameters, parent, parameters->size()));
+                Reader proc(procedure);
+                return proc;
             }
             else
             {
-                TokenVector result = eval_ast(input, env);
-                if (result.empty())
+                Reader evaluated = eval_ast(input, env);
+                MalPtr result = evaluated.next();
+                if (result == nullptr)
                 {
                     return result;
                 }
-                else
+
+                auto result_type = result->type();
+                if (result_type == MAL_PAIR)
                 {
-                    if (type == MAL_LIST)
+                    auto result_pair = result->as_pair();
+                    if (result_pair->car() == nullptr)
                     {
-                        if (result.peek() == nullptr)
-                        {
-                            throw new ProcedureNotFoundException("");
-                        }
-                        else
-                        {
-                            EnvSymbolPtr fn = nullptr;
-                            auto p_type = result.car()->type();
-
-                            if (p_type == MAL_SYMBOL)
-                            {
-                                fn = env.top()->get(result.car());
-                            }
-                            else if (p_type == MAL_PRIMITIVE)
-                            {
-                                auto procedure = result.next()->raw_value().car();
-                                fn = env.top()->get(procedure);
-                                return apply_fn(fn, result.cdr());
-                            }
-                            else if (p_type == MAL_PROCEDURE)
-                            {
-                                auto procedure = result.next();
-                                TokenVector raw_args;
-                                raw_args.append(result.cdr());
-                                auto cooked_args = EVAL(raw_args, env);
-                                TokenVector args;
-                                args.append(std::make_shared<MalList>(cooked_args));
-
-                                // WARNING: This function uses downcasting of a pointer from it's parent class to 
-                                // the actual subclass. This is VERY questionable, and if possible a better 
-                                // solution should be found!
-                                auto proc_frame = (dynamic_cast<MalProcedure*>(&(*procedure)));
-                                input = proc_frame->ast();
-                                auto new_env = Environment(proc_frame->parent(), proc_frame->params(), args);
-                                env.push(std::make_shared<Environment>(new_env));
-                            }
-                        }
+                        throw new ProcedureNotFoundException("");
                     }
                     else
                     {
-                        env.pop();
-                        return result;
+                        EnvSymbolPtr fn = nullptr;
+                        auto p_type = result->type();
+
+                        if (p_type == MAL_SYMBOL)
+                        {
+                            fn = env.top()->get(result_pair->car());
+                        }
+                        else if (p_type == MAL_PRIMITIVE)
+                        {
+                            auto procedure = result_pair->car()->as_pair()->car();
+                            fn = env.top()->get(procedure);
+                            return apply_fn(fn, result_pair->cdr()->as_pair());
+                        }
+                        else if (p_type == MAL_PROCEDURE)
+                        {
+                            auto procedure = result_pair->car();
+                            PairPtr raw_args;
+                            raw_args->add(result_pair->cdr());
+                            Reader warmed_args(raw_args);
+                            auto cooked_args = EVAL(warmed_args, env);
+                            PairPtr args;
+                            args->add(std::make_shared<MalPair>(cooked_args.next()->as_pair()));
+
+                            ProcPtr proc_frame = procedure->as_procedure();
+                            input = Reader(proc_frame->ast());
+                            auto new_env = Environment(proc_frame->parent(), proc_frame->params(), args);
+                            env.push(std::make_shared<Environment>(new_env));
+                        }
                     }
+                }
+                else
+                {
+                    env.pop();
+                    return result;
                 }
             }
         }
@@ -153,17 +160,17 @@ TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
 }
 
 
-TokenVector eval_ast(TokenVector& input, Env_Frame& env)
+Reader eval_ast(Reader input, Env_Frame& env)
 {
-    TokenVector result;
+    PairPtr result = std::make_shared<MalPair>();
     MalPtr peek = input.peek();
 
     if (peek == nullptr)
     {
-        return result;
+        return Reader(result);
     }
 
-    MalTypeName type = peek->type();
+    MalType type = peek->type();
 
     switch (type)
     {
@@ -180,13 +187,13 @@ TokenVector eval_ast(TokenVector& input, Env_Frame& env)
 
                 if (p == nullptr)
                 {
-                    throw new SymbolNotInitializedException(symbol->value());
+                    throw new SymbolNotInitializedException(symbol->to_str());
                 }
 
                 if (p->type() == ENV_PRIMITIVE)
                 {
-                    MalPtr prim = std::make_shared<MalPrimitive>(p->symbol().value(), p->arity());
-                    result.append(prim);
+                    MalPtr prim = std::make_shared<MalPrimitive>(p->symbol().to_str(), p->arity());
+                    result->add(prim);
                 }
                 else if (p->type() == ENV_PROCEDURE)
                 {
@@ -194,54 +201,72 @@ TokenVector eval_ast(TokenVector& input, Env_Frame& env)
                     auto procedure_frame = dynamic_cast<MalProcedure*>(&(*proc));
                     auto proc_env = procedure_frame->parent();
                     env.push(proc_env);
-                    input = procedure_frame->ast();
+                    input = Reader(procedure_frame->ast());
                 }
                 else if (p->type() == ENV_SYMBOL)
                 {
-                    result.append(p->value());
+                    result->add(p->value());
                 }
                 else
                 {
-                    throw new SymbolNotInitializedException("");
+                    throw SymbolNotInitializedException("");
                 }
-                return result;
+                return Reader(result);
             }
             break;
-        case MAL_LIST:
+        case MAL_PAIR:
             {
-                TokenVector sourcelist, evlist;
-                sourcelist = input.next()->raw_value();
-                for (auto elem = sourcelist.next(); elem != nullptr; elem = sourcelist.next())
+                PairPtr sourcelist, evlist;
+                evlist = result = std::make_shared<MalPair>();
+                sourcelist = input.next()->as_pair();
+                for (auto elem = sourcelist; elem != nullptr; elem = elem->as_pair()->cdr()->as_pair())
                 {
-                    TokenVector temp;
-                    temp.append(elem);
-                    evlist.append(EVAL(temp, env));
-                    temp.clear();
+                    Reader temp(elem->car());
+                    Reader succ = EVAL(temp, env);
+                    if (succ.peek() != nullptr)
+                    {
+                        evlist->add(succ.next());
+                    }
+                    else
+                    {
+                        break;
+                    }
+                    if (!elem->is_pair())
+                    {
+                        break;
+                    }
+                    if (elem->as_pair()->cdr() == nullptr)
+                    {
+                        break;
+                    }
+                    if (!elem->as_pair()->cdr()->is_pair())
+                    {
+                        break;
+                    }
                 }
 
-                return evlist;
+                return Reader(evlist);
             }
             break;
         case MAL_VECTOR:
             {
-                TokenVector veclist = input.next()->raw_value();
-                return eval_vec(veclist, env);
+                PairPtr veclist = input.next()->as_pair();
+                Reader vecreader(veclist);
+                return eval_vec(vecreader, env);
             }
             break;
         case MAL_HASHMAP:
             {
-                // WARNING: This function uses downcasting of a pointer from it's parent class to the
-                // actual subclass. This is VERY questionable, and if possible a better solution should be found!
-                HashMapInternal hm((dynamic_cast<MalHashmap*>(&(*input.next())))->internal_map());
-                return eval_hashmap(hm, env);
+                return eval_hashmap(input.next()->as_hashmap(), env);
             }
             break;
         case MAL_QUASIQUOTE:
         {
-            input.next()->raw_value();
-            TokenVector temp;
-            temp.append(input.next()->raw_value());
-            return eval_quasiquoted(temp, env);
+            input.next()->as_pair();
+            PairPtr temp;
+            temp->add(input.next()->as_pair());
+            Reader qqreader(temp);
+            return eval_quasiquoted(qqreader, env);
         }
             break;
         default:
@@ -250,65 +275,69 @@ TokenVector eval_ast(TokenVector& input, Env_Frame& env)
 }
 
 
-TokenVector eval_vec(TokenVector& input, Env_Frame& env)
+Reader eval_vec(Reader input, Env_Frame& env)
 {
-    TokenVector temp, elements;
+    PairPtr temp, elements;
     for (MalPtr elem = input.next(); elem != nullptr; elem = input.next())
     {
-        temp.append(elem);
-        elements.append(EVAL(temp, env));
-        temp.clear();
+        temp = std::make_shared<MalPair>();
+        temp->add(elem);
+        Reader tempreader(temp);
+        elements->add(EVAL(tempreader, env).next());
     }
 
-    TokenVector result;
+    PairPtr result;
     MalPtr vec = std::make_shared<MalVector>(elements);
-    result.append(vec);
-    return result;
+    result->add(vec);
+    return Reader(result);
 }
 
-TokenVector eval_hashmap(HashMapInternal& input, Env_Frame& env)
-{
-    HashMapInternal resultant;
 
-    for (auto element : input)
+Reader eval_hashmap(MapPtr input, Env_Frame& env)
+{
+    InternalHashmap source = input->get_internal_hashmap();
+    InternalHashmap resultant;
+
+    for (auto element : source)
     {
-        TokenVector temp;
-        temp.append(element.second);
-        resultant.emplace(element.first, EVAL(temp, env).next());
-        temp.clear();
+        PairPtr temp = std::make_shared<MalPair>();
+        temp->add(element.second);
+        Reader tempreader(temp);
+        resultant.emplace(element.first, EVAL(tempreader, env).next());
     }
 
-    TokenVector result;
+    PairPtr result;
     MalPtr new_hm = std::make_shared<MalHashmap>(resultant);
-    result.append(new_hm);
-    return result;
+    result->add(new_hm);
+    return Reader(result);
 }
 
 
-TokenVector eval_def(TokenVector& input, Env_Frame& env)
+Reader eval_def(Reader input, Env_Frame& env)
 {
-    if (input.next()->value() == "def!")
+    if (input.next()->to_str() == "def!")
     {
         auto symbol = input.next();
 
         if (symbol == nullptr || symbol->type() != MAL_SYMBOL)
         {
-            throw new InvalidDefineException(input.values());
+            throw new InvalidDefineException(input.next()->to_str());
         }
 
         if (env.top()->find(symbol, true))
         {
             auto sym_ptr = env.top()->get(symbol);    // get the pointer to the local symbol
             auto val_ptr = input.next();
-            TokenVector val_vec;
-            val_vec.append(val_ptr);
+            PairPtr val_vec;
+            val_vec->add(val_ptr);
             if (val_ptr == nullptr)
             {
                 throw new ArityMismatchException();
             }
-            auto value = EVAL(val_vec, env);
+            Reader vec_reader(val_vec);
+            auto value = EVAL(vec_reader, env);
 
-            sym_ptr->set(value.car());
+            sym_ptr->set(value.next());
             return value;
         }
         else
@@ -319,173 +348,177 @@ TokenVector eval_def(TokenVector& input, Env_Frame& env)
                 throw new ArityMismatchException();
             }
 
-            auto placeholder = std::make_shared<MalNull>();
-            TokenVector val_vec;
-            val_vec.append(val_ptr);
-            auto value = EVAL(val_vec, env);
+            auto placeholder = std::make_shared<MalNil>();
+            PairPtr val_vec;
+            val_vec->add(val_ptr);
+            Reader vec_reader(val_vec);
+            auto value = EVAL(vec_reader, env);
             env.top()->set(symbol, value.peek());
             auto sym_ptr = env.top()->get(symbol); // get the pointer to the local symbol
             sym_ptr->set(value.next());
-            TokenVector result;
-            result.append(env.top()->get(symbol)->value());
-            return result;
+            PairPtr result;
+            result->add(env.top()->get(symbol)->value());
+            return Reader(result);
         }
     }
     else
     {
-        throw new InvalidDefineException(input.values());
+        throw new InvalidDefineException(input.next()->to_str());
     }
 }
 
-TokenVector eval_let(TokenVector& input, Env_Frame& env)
+
+Reader eval_let(Reader input, Env_Frame& env)
 {
-    if (input.next()->value() == "let*")
+    if (input.next()->to_str() == "let*")
     {
         EnvPtr current_env(std::make_shared<Environment>(env.top()));
         env.push(current_env);
 
         auto var_head = input.next();
-        if (var_head->type() == MAL_LIST || var_head->type() == MAL_VECTOR)
+        if (var_head->type() == MAL_PAIR || var_head->type() == MAL_VECTOR)
         {
-            auto var_list = var_head->raw_value();
+            auto var_list = var_head->as_pair();
 
             // pre-initialize all of the binds
-            auto pre_list = var_list;
-            while (pre_list.peek() != nullptr)
+            auto iter_list = var_list;
+            auto symbol = iter_list->car();
+            while (symbol != nullptr)
             {
-                auto symbol = pre_list.next();
-                if (symbol == nullptr || symbol->type() != MAL_SYMBOL)
+                if (symbol->type() != MAL_SYMBOL)
                 {
-                    throw new InvalidLetException(input.values());
+                    throw new InvalidLetException(input.next()->to_str());
                 }
                 else
                 {
-                    auto placeholder = std::make_shared<MalNull>();
+                    auto placeholder = std::make_shared<MalNil>();
                     env.top()->set(symbol, placeholder);      // pre-initialize symbol in environment
-                    pre_list.next();
+                    iter_list = iter_list->cdr()->as_pair();  // get and discard the intended value
+                    iter_list = iter_list->cdr()->as_pair();
+                    symbol = iter_list->car();
                 }
             }
 
             // re-bind with all of the values
-            while (var_list.peek() != nullptr)
+            while (var_list->cdr() != nullptr)
             {
-                auto symbol = var_list.next();
+                auto symbol = var_list->car();
                 if (symbol == nullptr || symbol->type() != MAL_SYMBOL)
                 {
-                    throw new InvalidLetException(input.values());
+                    throw new InvalidLetException(input.next()->to_str());
                 }
                 else
                 {
-                    auto val_ptr = var_list.next();
+                    auto val_ptr = var_list->cdr();
                     if (val_ptr == nullptr)
                     {
-                        throw new InvalidLetException(input.values());
+                        throw new InvalidLetException(input.next()->to_str());
                     }
 
                     auto sym_ptr = env.top()->get(symbol);    // and retrieve the pointer to the env entry
 
-                    TokenVector val_vec;
-                    val_vec.append(val_ptr);
-                    auto value = EVAL(val_vec, env);
+                    PairPtr val_vec = std::make_shared<MalPair>(val_ptr);
+                    Reader val_reader(val_vec);
+                    auto value = EVAL(val_reader, env);
 
                     sym_ptr->set(value.next());
                 }
             }
 
-            TokenVector final_value;
+            PairPtr final_value;
             for (auto element = input.next(); element != nullptr; element = input.next())
             {
-                final_value.clear();
-                TokenVector elem_val;
-                elem_val.append(element);
-                final_value.append(EVAL(elem_val, env));
+                final_value = std::make_shared<MalPair>();
+                PairPtr elem_val;
+                elem_val->add(element);
+                Reader elem_reader(elem_val);
+                final_value->add(EVAL(elem_reader, env).next());
                 if (input.peek() != nullptr)
                 {
-                    final_value = EVAL(final_value, env);
+                    Reader temp_reader(final_value);
+                    final_value = EVAL(temp_reader, env).next()->as_pair();
                 }
             }
 
-            return final_value;
+            Reader final_reader(final_value);
+            return final_reader;
         }
         else
         {
-            throw new InvalidLetException(input.values());
+            throw new InvalidLetException(input.next()->to_str());
 
         }
     }
     else
     {
-        throw new InvalidLetException(input.next()->value());
+        throw new InvalidLetException(input.next()->to_str());
     }
 }
 
 
 
-TokenVector eval_quasiquoted(TokenVector& input, Env_Frame& env, bool islist)
+Reader eval_quasiquoted(Reader input, Env_Frame& env, bool islist)
 {
-    TokenVector elements, result;
+    PairPtr elements, result;
 
     for (MalPtr elem = input.next(); elem != nullptr; elem = input.next())
     {
-        if (elem->type() == MAL_LIST)
+        if (elem->type() == MAL_PAIR)
         {
-            TokenVector temp;
-            temp.append(elem->raw_value());
-            elements.append(eval_quasiquoted(temp, env, true));
+            Reader temp(elem->as_pair());
+            elements->add(eval_quasiquoted(temp, env, true).next()->as_pair());
         }
 
         else if(elem->type() == MAL_UNQUOTE)
         {
-            TokenVector temp;
-            temp.append(elem->raw_value());
-            elements.append(eval_ast(temp, env));
+            Reader temp(elem->as_pair());
+            elements->add(eval_ast(temp, env).next()->as_pair());
         }
         else
         {
-            elements.append(elem);
+            elements->add(elem);
         }
     }
     if (islist)
     {
-        result.append(std::make_shared<MalList>(elements));
+        result->add(std::make_shared<MalPair>(elements));
     }
     else
     {
-        result.append(std::make_shared<MalQuasiquote>(elements));
+        result->add(std::make_shared<MalQuasiquote>(elements));
     }
-    return result;
+    return Reader(result);
 }
 
 
-TokenVector eval_do(TokenVector& input, Env_Frame& env)
+Reader eval_do(Reader input, Env_Frame& env)
 {
     auto discard = input.next();       // discard the 'do' symbol
-    TokenVector final_value;
+    PairPtr final_value;
     for (auto element = input.next(); element != nullptr; element = input.next())
     {
-        final_value.clear();
-        final_value.append(element);
+        final_value = std::make_shared<MalPair>();
+        final_value->add(element);
         if (input.peek() != nullptr)
         {
-            final_value = EVAL(final_value, env);
+            Reader temp_reader(final_value);
+            final_value = EVAL(temp_reader, env).next()->as_pair();
         }
     }
 
-    return final_value;
+    return Reader(final_value);
 }
 
 
-TokenVector eval_if(TokenVector& input, Env_Frame& env)
+Reader eval_if(Reader input, Env_Frame& env)
 {
     auto discard = input.next();    // discard the 'if' symbol
-    TokenVector test;
-    test.append(input.next());
+    Reader test(input.next());
     auto clause = EVAL(test, env).next();
 
-    if (clause->value() != "false" && clause->value() != "nil")
+    if (clause->to_str() != "false" && clause->to_str() != "nil")
     {
-        TokenVector temp;
-        temp.append(input.next());
+        Reader temp(input.next());
         return temp;
     }
     else
@@ -493,46 +526,44 @@ TokenVector eval_if(TokenVector& input, Env_Frame& env)
         discard = input.next();      // discard the true condition
         if (input.peek() == nullptr)
         {
-            TokenVector temp;
-            temp.append(std::make_shared<MalNil>());
+            Reader temp(std::make_shared<MalNil>());
             return temp;
         }
         else
         {
-            TokenVector temp;
-            temp.append(input.next());
+            Reader temp(input.next());
             return temp;
         }
     }
 }
 
 
-// TokenVector eval_fn(TokenVector& input, Env_Frame& env)
+// Reader eval_fn(Reader input, Env_Frame& env)
 // {
 //     auto discard = input.next();    // discard the 'fn*' symbol
-//     TokenVector parameters;
-//     parameters.append(input.next());
-//     TokenVector arguments, body;
+//     PairPtr parameters;
+//     parameters->add(input.next());
+//     PairPtr arguments, body;
 //     body = input.rest();
 //     std::shared_ptr<Environment> parent = std::make_shared<Environment>(env);
 //     auto current_env = Environment(parent, parameters, arguments);
 
-//     Procedure closure([parameters, body, parent](TokenVector arguments)->TokenVector {
-//         TokenVector final_value;
-//         TokenVector input = body;
+//     Procedure closure([parameters, body, parent](PairPtr arguments)->PairPtr {
+//         PairPtr final_value;
+//         PairPtr input = body;
 //         auto current_env = Environment(parent, parameters, arguments);
 //         for (auto element = input.next(); element != nullptr; element = input.next())
 //         {
 //             final_value.clear();
-//             final_value.append(element);
+//             final_value->add(element);
 //             final_value = EVAL(final_value, current_env);
 //         }
 
 //         return final_value;
 //     });
 
-//     TokenVector procedure;
-//     procedure.append(std::make_shared<MalProcedure>(closure, body, parameters, current_env, parameters.size()));
+//     PairPtr procedure;
+//     procedure->add(std::make_shared<MalProcedure>(closure, body, parameters, current_env, parameters.size()));
 
 //     return procedure;
 // }

@@ -19,18 +19,6 @@
 Environment repl_env;
 
 
-Env_Symbol::Env_Symbol(MalPtr s, MalPtr v): val(v), n_ary(0)
-{
-    if (s != nullptr && s->type() == MAL_SYMBOL)
-    {
-        sym = s->value();
-    }
-    else
-    {
-        throw new InvalidEnvironmentSymbolException(s->value());
-    }
-}
-
 
 void Env_Symbol::set(MalPtr value)
 {
@@ -38,56 +26,54 @@ void Env_Symbol::set(MalPtr value)
 }
 
 
-TokenVector Env_Primitive::apply(TokenVector& args)
+PairPtr Env_Primitive::apply(PairPtr args)
 {
-    TokenVector result;
+    PairPtr result;
     size_t effective_arity = abs(arity());
 
-    if ((args.size() == effective_arity) || (arity() < 0 && args.size() >= effective_arity-1))
+    if ((args->size() == effective_arity) || (arity() < 0 && args->size() >= effective_arity-1))
     {
-        return procedure(args);
+        return procedure(*std::make_shared<Reader>(args)).list()->as_pair();
     }
     else
     {
         throw new ArityMismatchException();
     }
 
-
     return args;
 }
 
 
 
-Environment::Environment(EnvPtr p, TokenVector binds, TokenVector exprs): parent(p)
+Environment::Environment(EnvPtr p, PairPtr binds, PairPtr exprs): parent(p)
 {
-    if (!is_mal_container(binds.peek()->type()) || !is_mal_container(exprs.peek()->type()))
-    {
-        throw new InvalidBindExprListsException(binds.values(), exprs.values());
-    }
-
-    auto parameters = binds.next()->raw_value();
-    auto arguments = exprs.next()->raw_value();
-
     bool rests = false;
 
-    for (auto parameter = parameters.next(); parameter != nullptr; parameter = parameters.next())
+    PairPtr bind = nullptr;
+    PairPtr argument = nullptr;
+
+    for (bind = binds, argument = exprs;
+         !(bind->is_null() || argument->is_null());
+         bind = bind->cdr()->as_pair(), argument = argument->cdr()->as_pair())
     {
+        auto parameter = bind->car();
         if (parameter->type() == MAL_REST_ARG)
         {
             rests = true;
             break;
         }
-        this->set(parameter, arguments.next());
+        this->set(parameter, argument->car());
     }
 
     if (rests)
     {
-        auto rest = std::make_shared<MalList>(arguments.rest());
-        this->set(parameters.peek(), rest);
+        auto rest_sym = bind->cdr()->as_pair()->car();
+        auto rest = argument->cdr();
+        this->set(rest_sym, rest);
     }
-    else if (parameters.size() != arguments.size())
+    else if (binds->size() != exprs->size())
     {
-        throw new UnequalBindExprListsException(parameters.values(), arguments.values());
+        throw new UnequalBindExprListsException(binds->to_str(), exprs->to_str());
     }
 }
 
@@ -99,7 +85,7 @@ bool Environment::find(MalPtr p, bool local)
     {
         for (std::vector<EnvSymbolPtr>::iterator it = env.begin(); it != env.end(); ++it)
         {
-            if (it->get()->symbol().value() == p->value())
+            if (it->get()->symbol().to_str() == p->to_str())
             {
                 return true;
             }
@@ -119,7 +105,7 @@ bool Environment::find(std::string s, bool local)
 {
     for (std::vector<EnvSymbolPtr>::iterator it = env.begin(); it != env.end(); ++it)
     {
-        if (it->get()->symbol().value() == s)
+        if (it->get()->symbol().to_str() == s)
         {
             return true;
         }
@@ -140,7 +126,7 @@ EnvSymbolPtr Environment::get(MalPtr p)
     {
         for (std::vector<EnvSymbolPtr>::iterator it = env.begin(); it != env.end(); ++it)
         {
-            if (it->get()->symbol().value() == p->value())
+            if (it->get()->symbol().to_str() == p->to_str())
             {
                 return *it;
             }
@@ -160,7 +146,7 @@ EnvSymbolPtr Environment::get(std::string symbol)
 {
     for (std::vector<EnvSymbolPtr>::iterator it = env.begin(); it != env.end(); ++it)
     {
-        if (it->get()->symbol().value() == symbol)
+        if (it->get()->symbol().to_str() == symbol)
         {
             return *it;
         }
@@ -177,7 +163,7 @@ EnvSymbolPtr Environment::get(std::string symbol)
 
 void Environment::set(EnvSymbolPtr element)
 {
-    auto el_symbol = element->symbol().value();
+    auto el_symbol = element->symbol().to_str();
     if (find(el_symbol, true))
     {
         EnvSymbolPtr existing_entry = get(el_symbol);
@@ -192,9 +178,9 @@ void Environment::set(EnvSymbolPtr element)
 
 void Environment::set(MalPtr symbol, MalPtr value)
 {
-    if (find(symbol->value(), true))
+    if (find(symbol->to_str(), true))
     {
-        EnvSymbolPtr existing_entry = get(symbol->value());
+        EnvSymbolPtr existing_entry = get(symbol->to_str());
         existing_entry->set(value);
     }
     env.push_back(std::make_shared<Env_Symbol>(symbol, value));
@@ -222,7 +208,7 @@ std::string Environment::element_names()
         {
             result += ", ";
         }
-        result += it->get()->symbol().value();
+        result += it->get()->symbol().to_str();
     }
 
     return result;

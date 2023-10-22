@@ -40,6 +40,26 @@ MalPtr Reader::next()
  }
 
 
+MalPtr Reader::rest()
+ {
+    MalPtr result;
+    if (m_current_token != nullptr)
+    {
+        if (m_current_token->type() == MAL_PAIR)
+        {
+            result = m_current_token->as_pair()->cdr();
+            m_current_token = result;
+        }
+        else
+        {
+            result = nullptr;
+        }
+    }
+
+    return result;
+ }
+
+
 Reader read_str(std::string s)
 {
     Tokenizer tokenizer;

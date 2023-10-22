@@ -258,7 +258,6 @@ protected:
 
 
 
-
 class NullTokenException: public std::exception
 {
 public:

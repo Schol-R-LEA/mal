@@ -12,77 +12,23 @@
 #include "printer.h"
 
 
-template <class T> std::function<T(T, T)> apply_plus([](T x, T y)->T
-{
-    return x + y;
-});
-
-
-template <class T> std::function<T(T, T)> apply_minus([](T x, T y)->T
-{
-    return x - y;
-});
-
-
-template <class T> std::function<T(T, T)> apply_multiply([](T x, T y)->T
-{
-    return x * y;
-});
-
-
-template <class T> std::function<T(T, T)> apply_divide([](T x, T y)->T
-{
-    return x / y;
-});
-
-
-template <class T> std::function<T(T, T)> apply_modulo([](T x, T y)->T
-{
-    return x % y;
-});
-
-/* apply_arith_form - utility class that encapsulated part of the repetitive code
-used in the arithmetic operation primitives.
-
-WARNING: This function uses downcasting of a pointer from it's parent class to the
-actual subclass. This is VERY questionable, which is partly why this code is isolated
-into a separate template function.
-*/
-template <class MX, class X, class MY, class Y, class Z, class RET> TokenVector apply_arith_form(MalPtr x, MalPtr y, std::function<Z(Z, Z)> op)
-{
-    TokenVector result;
-
-    // WARNING: this code down-casts the parameters x and y to their
-    // respective types, then immeditately discards the resulting pointers.
-    // Take care in modifiying this code, if at all!
-    Z xp((dynamic_cast<MX*>(&(*x)))->numeric_value());
-    Z yp((dynamic_cast<MY*>(&(*y)))->numeric_value());
-    result.append(std::make_shared<RET>(op(xp, yp)));
-    return result;
-}
-
-
-Procedure mal_plus([](TokenVector tokens)->TokenVector
+Procedure mal_plus([](Reader& tokens)->Reader
 {
     MalPtr x_peek = tokens.peek();
 
     if (x_peek != nullptr)
     {
-        TokenVector x_tokens;
-
-        x_tokens.append(tokens.next());
-
+        PairPtr x_tokens = std::make_shared<MalPair>(tokens.next());
 
         MalPtr y_peek = tokens.peek();
         if (y_peek != nullptr)
         {
-            TokenVector y_tokens;
-            y_tokens.append(tokens.next());
+            PairPtr y_tokens = std::make_shared<MalPair>(tokens.next()->as_pair()->car());
 
-            MalPtr x = x_tokens.next();
-            MalPtr y = y_tokens.next();
+            MalPtr x = x_tokens->car();
+            MalPtr y = y_tokens->car();
 
-            TokenVector result;
+            MalPtr result;
 
             switch (x->type())
             {
@@ -92,26 +38,26 @@ Procedure mal_plus([](TokenVector tokens)->TokenVector
                         {
                             case MAL_INTEGER:
                             {
-                                return apply_arith_form<MalInteger, mpz_class, MalInteger, mpz_class, mpz_class, MalInteger>(x, y, apply_plus<mpz_class>);
+                                return Reader(std::make_shared<MalInteger>(x->as_integer() + y->as_integer()));
                             }
                                 break;
                             case MAL_FRACTIONAL:
                             {
-                                return apply_arith_form<MalInteger, mpz_class, MalFractional, mpf_class, mpf_class, MalFractional>(x, y, apply_plus<mpf_class>);
+                                return Reader(std::make_shared<MalFractional>(x->as_integer() + y->as_fractional()));
                             }
                                 break;
                             case MAL_RATIONAL:
                             {
-                                return apply_arith_form<MalInteger, mpz_class, MalRational, mpq_class, mpq_class, MalRational>(x, y, apply_plus<mpq_class>);
+                                return Reader(std::make_shared<MalRational>(x->as_integer() + y->as_rational()));
                             }
                                 break;
                             case MAL_COMPLEX:
                             {
-                                return apply_arith_form<MalInteger, mpz_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_plus<std::complex<mpf_class> >);
+                                return Reader(std::make_shared<MalComplex>(complex_mpf(x->as_integer()) + y->as_complex()));
                             }
                                 break;
                             default:
-                                throw new InvalidFunctionArgumentException(y->value());
+                                throw new InvalidFunctionArgumentException(y->to_str());
                         }
                     }
                         break;
@@ -122,26 +68,26 @@ Procedure mal_plus([](TokenVector tokens)->TokenVector
                         {
                             case MAL_INTEGER:
                             {
-                                return apply_arith_form<MalFractional, mpf_class, MalInteger, mpz_class, mpf_class, MalFractional>(x, y, apply_plus<mpf_class>);
+                                return Reader(std::make_shared<MalFractional>(x->as_fractional() + y->as_integer()));
                             }
                                 break;
                             case MAL_FRACTIONAL:
                             {
-                                return apply_arith_form<MalFractional, mpf_class, MalFractional, mpf_class, mpf_class, MalFractional>(x, y, apply_plus<mpf_class>);
+                                return Reader(std::make_shared<MalFractional>(x->as_fractional() + y->as_fractional()));
                             }
                                 break;
                             case MAL_RATIONAL:
                             {
-                                return apply_arith_form<MalFractional, mpf_class, MalRational, mpf_class, mpf_class, MalFractional>(x, y, apply_plus<mpf_class>);
+                                return Reader(std::make_shared<MalFractional>(x->as_fractional() + y->as_rational()));
                             }
                                 break;
                             case MAL_COMPLEX:
                             {
-                                return apply_arith_form<MalFractional, mpf_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_plus<std::complex<mpf_class> >);
+                                return Reader(std::make_shared<MalComplex>(complex_mpf(x->as_fractional()) + y->as_complex()));
                             }
                                 break;
                             default:
-                                throw new InvalidFunctionArgumentException(y_peek->value());
+                                throw new InvalidFunctionArgumentException(y_peek->to_str());
                         }
                     }
                         break;
@@ -151,26 +97,26 @@ Procedure mal_plus([](TokenVector tokens)->TokenVector
                         {
                             case MAL_INTEGER:
                             {
-                                return apply_arith_form<MalRational, mpq_class, MalInteger, mpz_class, mpq_class, MalRational>(x, y, apply_plus<mpq_class>);
+                                return Reader(std::make_shared<MalRational>(x->as_rational() + y->as_integer()));
                             }
                                 break;
                             case MAL_FRACTIONAL:
                             {
-                                return apply_arith_form<MalRational, mpq_class, MalFractional, mpf_class, mpq_class, MalFractional>(x, y, apply_plus<mpq_class>);
+                                return Reader(std::make_shared<MalFractional>(x->as_rational() + y->as_fractional()));
                             }
                                 break;
                             case MAL_RATIONAL:
                             {
-                                return apply_arith_form<MalRational, mpq_class, MalRational, mpq_class, mpq_class, MalRational>(x, y, apply_plus<mpq_class>);
+                                return Reader(std::make_shared<MalRational>(x->as_rational() + y->as_rational()));
                             }
                                 break;
                             case MAL_COMPLEX:
                             {
-                                return apply_arith_form<MalRational, mpq_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_plus<std::complex<mpf_class> >);
+                                return Reader(std::make_shared<MalComplex>(complex_mpf(x->as_rational()) + y->as_complex()));
                             }
                                 break;
                             default:
-                                throw new InvalidFunctionArgumentException(y_peek->value());
+                                throw new InvalidFunctionArgumentException(y->to_str());
                         }
                     }
                         break;
@@ -180,31 +126,31 @@ Procedure mal_plus([](TokenVector tokens)->TokenVector
                         {
                             case MAL_INTEGER:
                             {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalInteger, mpz_class, std::complex<mpf_class>, MalComplex>(x, y, apply_plus<std::complex<mpf_class> >);
+                                return Reader(std::make_shared<MalComplex>(x->as_complex() + complex_mpf(y->as_integer())));
                             }
                                 break;
                             case MAL_FRACTIONAL:
                             {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalFractional, mpf_class,  std::complex<mpf_class>, MalComplex>(x, y, apply_plus<std::complex<mpf_class> >);
+                                return Reader(std::make_shared<MalComplex>(x->as_complex() + complex_mpf(y->as_fractional())));
                             }
                                 break;
                             case MAL_RATIONAL:
                             {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalRational, mpq_class, std::complex<mpf_class>, MalComplex>(x, y, apply_plus<std::complex<mpf_class> >);
+                                return Reader(std::make_shared<MalComplex>(x->as_complex() + complex_mpf(y->as_rational())));
                             }
                                 break;
                             case MAL_COMPLEX:
                             {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalComplex,std::complex<mpf_class>,  std::complex<mpf_class>, MalComplex>(x, y, apply_plus<std::complex<mpf_class> >);
+                                return Reader(std::make_shared<MalComplex>(x->as_complex() + y->as_complex()));
                             }
                                 break;
                             default:
-                                throw new InvalidFunctionArgumentException(y->value());
+                                throw new InvalidFunctionArgumentException(y->to_str());
                         }
                     }
                         break;
                     default:
-                        throw new InvalidFunctionArgumentException(x->value());
+                        throw new InvalidFunctionArgumentException(x->to_str());
             }
         }
         else
@@ -218,545 +164,18 @@ Procedure mal_plus([](TokenVector tokens)->TokenVector
     }
 });
 
-
-
-Procedure mal_minus([](TokenVector tokens)->TokenVector
-{
-    MalPtr x_peek = tokens.peek();
-
-    if (x_peek != nullptr)
-    {
-        TokenVector x_tokens;
-
-        x_tokens.append(tokens.next());
-
-        MalPtr y_peek = tokens.peek();
-        if (y_peek != nullptr)
-        {
-            TokenVector y_tokens;
-            y_tokens.append(tokens.next());
-
-
-            MalPtr x = x_tokens.next();
-            MalPtr y = y_tokens.next();
-
-            TokenVector result;
-
-            switch (x->type())
-            {
-                    case MAL_INTEGER:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalInteger, mpz_class, mpz_class, MalInteger>(x, y, apply_minus<mpz_class>);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalFractional, mpf_class, mpf_class, MalFractional>(x, y, apply_minus<mpf_class>);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalRational, mpq_class, mpq_class, MalRational>(x, y, apply_minus<mpq_class>);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_minus<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y->value());
-                        }
-                    }
-                        break;
-
-                    case MAL_FRACTIONAL:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalInteger, mpz_class, mpf_class, MalFractional>(x, y, apply_minus<mpf_class>);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalFractional, mpf_class, mpf_class, MalFractional>(x, y, apply_minus<mpf_class>);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalRational, mpf_class, mpf_class, MalFractional>(x, y, apply_minus<mpf_class>);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_minus<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y_peek->value());
-                        }
-                    }
-                        break;
-                    case MAL_RATIONAL:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalInteger, mpz_class, mpq_class, MalRational>(x, y, apply_minus<mpq_class>);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalFractional, mpf_class, mpq_class, MalFractional>(x, y, apply_minus<mpq_class>);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalRational, mpq_class, mpq_class, MalRational>(x, y, apply_minus<mpq_class>);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_minus<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y_peek->value());
-                        }
-                    }
-                        break;
-                case MAL_COMPLEX:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalInteger, mpz_class, std::complex<mpf_class>, MalComplex>(x, y, apply_minus<std::complex<mpf_class> >);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalFractional, mpf_class,  std::complex<mpf_class>, MalComplex>(x, y, apply_minus<std::complex<mpf_class> >);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalRational, mpq_class, std::complex<mpf_class>, MalComplex>(x, y, apply_minus<std::complex<mpf_class> >);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalComplex,std::complex<mpf_class>,  std::complex<mpf_class>, MalComplex>(x, y, apply_minus<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y->value());
-                        }
-                    }
-                        break;
-                    default:
-                        throw new InvalidFunctionArgumentException(x->value());
-            }
-        }
-        else
-        {
-            throw new MissingFunctionArgumentException();
-        }
-    }
-    else
-    {
-        throw new MissingFunctionArgumentException();
-    }
-});
-
-
-
-Procedure mal_multiply([](TokenVector tokens)->TokenVector
-{
-    MalPtr x_peek = tokens.peek();
-
-    if (x_peek != nullptr)
-    {
-        TokenVector x_tokens;
-
-        x_tokens.append(tokens.next());
-
-        MalPtr y_peek = tokens.peek();
-        if (y_peek != nullptr)
-        {
-            TokenVector y_tokens;
-            y_tokens.append(tokens.next());
-
-            MalPtr x = x_tokens.next();
-            MalPtr y = y_tokens.next();
-
-            TokenVector result;
-
-            switch (x->type())
-            {
-                    case MAL_INTEGER:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalInteger, mpz_class, mpz_class, MalInteger>(x, y, apply_multiply<mpz_class>);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalFractional, mpf_class, mpf_class, MalFractional>(x, y, apply_multiply<mpf_class>);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalRational, mpq_class, mpq_class, MalRational>(x, y, apply_multiply<mpq_class>);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_multiply<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y->value());
-                        }
-                    }
-                        break;
-
-                    case MAL_FRACTIONAL:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalInteger, mpz_class, mpf_class, MalFractional>(x, y, apply_multiply<mpf_class>);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalFractional, mpf_class, mpf_class, MalFractional>(x, y, apply_multiply<mpf_class>);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalRational, mpf_class, mpf_class, MalFractional>(x, y, apply_multiply<mpf_class>);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_multiply<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y_peek->value());
-                        }
-                    }
-                        break;
-                    case MAL_RATIONAL:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalInteger, mpz_class, mpq_class, MalRational>(x, y, apply_multiply<mpq_class>);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalFractional, mpf_class, mpq_class, MalFractional>(x, y, apply_multiply<mpq_class>);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalRational, mpq_class, mpq_class, MalRational>(x, y, apply_multiply<mpq_class>);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_multiply<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y_peek->value());
-                        }
-                    }
-                        break;
-                case MAL_COMPLEX:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalInteger, mpz_class, std::complex<mpf_class>, MalComplex>(x, y, apply_multiply<std::complex<mpf_class> >);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalFractional, mpf_class,  std::complex<mpf_class>, MalComplex>(x, y, apply_multiply<std::complex<mpf_class> >);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalRational, mpq_class, std::complex<mpf_class>, MalComplex>(x, y, apply_multiply<std::complex<mpf_class> >);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalComplex,std::complex<mpf_class>,  std::complex<mpf_class>, MalComplex>(x, y, apply_multiply<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y->value());
-                        }
-                    }
-                        break;
-                    default:
-                        throw new InvalidFunctionArgumentException(x->value());
-            }
-        }
-        else
-        {
-            throw new MissingFunctionArgumentException();
-        }
-    }
-    else
-    {
-        throw new MissingFunctionArgumentException();
-    }
-});
-
-
-
-Procedure mal_divide([](TokenVector tokens)->TokenVector
-{
-    MalPtr x_peek = tokens.peek();
-
-    if (x_peek != nullptr)
-    {
-        TokenVector x_tokens;
-
-        x_tokens.append(tokens.next());
-
-        MalPtr y_peek = tokens.peek();
-        if (y_peek != nullptr)
-        {
-            TokenVector y_tokens;
-            y_tokens.append(tokens.next());
-
-
-            MalPtr x = x_tokens.next();
-            MalPtr y = y_tokens.next();
-
-            TokenVector result;
-
-            switch (x->type())
-            {
-                    case MAL_INTEGER:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalInteger, mpz_class, mpz_class, MalInteger>(x, y, apply_divide<mpz_class>);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalFractional, mpf_class, mpf_class, MalFractional>(x, y, apply_divide<mpf_class>);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalRational, mpq_class, mpq_class, MalRational>(x, y, apply_divide<mpq_class>);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_divide<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y->value());
-                        }
-                    }
-                        break;
-
-                    case MAL_FRACTIONAL:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalInteger, mpz_class, mpf_class, MalFractional>(x, y, apply_divide<mpf_class>);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalFractional, mpf_class, mpf_class, MalFractional>(x, y, apply_divide<mpf_class>);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalRational, mpf_class, mpf_class, MalFractional>(x, y, apply_divide<mpf_class>);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalFractional, mpf_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_divide<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y_peek->value());
-                        }
-                    }
-                        break;
-                    case MAL_RATIONAL:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalInteger, mpz_class, mpq_class, MalRational>(x, y, apply_divide<mpq_class>);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalFractional, mpf_class, mpq_class, MalFractional>(x, y, apply_divide<mpq_class>);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalRational, mpq_class, mpq_class, MalRational>(x, y, apply_divide<mpq_class>);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalRational, mpq_class, MalComplex, std::complex<mpf_class>, std::complex<mpf_class>, MalComplex>(x, y, apply_divide<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y_peek->value());
-                        }
-                    }
-                        break;
-                case MAL_COMPLEX:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalInteger, mpz_class, std::complex<mpf_class>, MalComplex>(x, y, apply_divide<std::complex<mpf_class> >);
-                            }
-                                break;
-                            case MAL_FRACTIONAL:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalFractional, mpf_class,  std::complex<mpf_class>, MalComplex>(x, y, apply_divide<std::complex<mpf_class> >);
-                            }
-                                break;
-                            case MAL_RATIONAL:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalRational, mpq_class, std::complex<mpf_class>, MalComplex>(x, y, apply_divide<std::complex<mpf_class> >);
-                            }
-                                break;
-                            case MAL_COMPLEX:
-                            {
-                                return apply_arith_form<MalComplex, std::complex<mpf_class>, MalComplex,std::complex<mpf_class>,  std::complex<mpf_class>, MalComplex>(x, y, apply_divide<std::complex<mpf_class> >);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y->value());
-                        }
-                    }
-                        break;
-                    default:
-                        throw new InvalidFunctionArgumentException(x->value());
-            }
-        }
-        else
-        {
-            throw new MissingFunctionArgumentException();
-        }
-    }
-    else
-    {
-        throw new MissingFunctionArgumentException();
-    }
-});
-
-
-
-Procedure mal_modulo([](TokenVector tokens)->TokenVector
-{
-    MalPtr x_peek = tokens.peek();
-
-    if (x_peek != nullptr)
-    {
-        TokenVector x_tokens;
-
-        x_tokens.append(tokens.next());
-
-        MalPtr y_peek = tokens.peek();
-        if (y_peek != nullptr)
-        {
-            TokenVector y_tokens;
-            y_tokens.append(tokens.next());
-
-
-            MalPtr x = x_tokens.next();
-            MalPtr y = y_tokens.next();
-
-            TokenVector result;
-
-            switch (x->type())
-            {
-                    case MAL_INTEGER:
-                    {
-                        switch (y->type())
-                        {
-                            case MAL_INTEGER:
-                            {
-                                return apply_arith_form<MalInteger, mpz_class, MalInteger, mpz_class, mpz_class, MalInteger>(x, y, apply_modulo<mpz_class>);
-                            }
-                                break;
-                            default:
-                                throw new InvalidFunctionArgumentException(y->value());
-                        }
-                    }
-                        break;
-                    default:
-                        throw new InvalidFunctionArgumentException(x->value());
-            }
-        }
-        else
-        {
-            throw new MissingFunctionArgumentException();
-        }
-    }
-    else
-    {
-        throw new MissingFunctionArgumentException();
-    }
-});
 
 
 // comparisons
-
-Procedure mal_equal([](TokenVector tokens)->TokenVector
+/*
+Procedure mal_equal([](Reader& tokens)->Reader
 {
-    TokenVector car;
+    PairPtr car;
     car.append(tokens.car());
-    TokenVector cdr;
+    PairPtr cdr;
     cdr.append(tokens.cdr());
 
-    TokenVector mal_true, mal_false;
+    PairPtr mal_true, mal_false;
     mal_true.append(std::make_shared<MalBoolean>("true"));
     mal_false.append(std::make_shared<MalBoolean>("false"));
 
@@ -781,8 +200,8 @@ Procedure mal_equal([](TokenVector tokens)->TokenVector
         {
             case MAL_INTEGER:
                 {
-                    auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_value();
-                    auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_value();
+                    auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_to_str();
+                    auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_to_str();
                     if (comp1 == comp2)
                     {
                         return mal_true;
@@ -795,8 +214,8 @@ Procedure mal_equal([](TokenVector tokens)->TokenVector
                 break;
             case MAL_RATIONAL:
                 {
-                    auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_value();
-                    auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_value();
+                    auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_to_str();
+                    auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_to_str();
                     if (comp1 == comp2)
                     {
                         return mal_true;
@@ -809,8 +228,8 @@ Procedure mal_equal([](TokenVector tokens)->TokenVector
                 break;
             case MAL_FRACTIONAL:
                 {
-                    auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_value();
-                    auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_value();
+                    auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_to_str();
+                    auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_to_str();
                     if (comp1 == comp2)
                     {
                         return mal_true;
@@ -823,8 +242,8 @@ Procedure mal_equal([](TokenVector tokens)->TokenVector
                 break;
             case MAL_COMPLEX:
                 {
-                    auto comp1 = dynamic_cast<MalComplex*>(&(*car.next()))->numeric_value();
-                    auto comp2 = dynamic_cast<MalComplex*>(&(*cdr.next()))->numeric_value();
+                    auto comp1 = dynamic_cast<MalComplex*>(&(*car.next()))->numeric_to_str();
+                    auto comp2 = dynamic_cast<MalComplex*>(&(*cdr.next()))->numeric_to_str();
                     if (comp1 == comp2)
                     {
                         return mal_true;
@@ -836,13 +255,13 @@ Procedure mal_equal([](TokenVector tokens)->TokenVector
                 }
                 break;
             default:
-                throw new NonNumericComparisonException(car.next()->value(), cdr.next()->value());
+                throw new NonNumericComparisonException(car.next()->to_str(), cdr.next()->to_str());
         }
     }
     else if (is_mal_container(car.peek()->type()) || is_mal_reader_macro(car.peek()->type()))
     {
-        auto car_list = car.peek()->raw_value();
-        auto cdr_list = cdr.peek()->raw_value();
+        auto car_list = car.peek()->raw_to_str();
+        auto cdr_list = cdr.peek()->raw_to_str();
 
         if (car_list.size() != cdr_list.size())
         {
@@ -851,11 +270,11 @@ Procedure mal_equal([](TokenVector tokens)->TokenVector
 
         for (size_t i = 0; i < cdr_list.size(); ++i)
         {
-            TokenVector comp;
+            PairPtr comp;
             comp.append(car_list.next());
             comp.append(cdr_list.next());
 
-            if (mal_equal(comp).peek()->value() == "false")
+            if (mal_equal(comp).peek()->to_str() == "false")
             {
                 return mal_false;
             }
@@ -864,7 +283,7 @@ Procedure mal_equal([](TokenVector tokens)->TokenVector
         return mal_true;
     }
 
-    else if (car.next()->value() != cdr.next()->value())
+    else if (car.next()->to_str() != cdr.next()->to_str())
     {
         return mal_false;
     }
@@ -874,13 +293,13 @@ Procedure mal_equal([](TokenVector tokens)->TokenVector
     }
 });
 
-Procedure mal_not_equal([](TokenVector tokens)->TokenVector
+Procedure mal_not_equal([](Reader& tokens)->Reader
 {
-    TokenVector mal_true, mal_false;
+    PairPtr mal_true, mal_false;
     mal_true.append(std::make_shared<MalBoolean>("true"));
     mal_false.append(std::make_shared<MalBoolean>("false"));
 
-    if (mal_equal(tokens).next()->value() != "true")
+    if (mal_equal(tokens).next()->to_str() != "true")
     {
         return mal_false;
     }
@@ -892,19 +311,19 @@ Procedure mal_not_equal([](TokenVector tokens)->TokenVector
 });
 
 
-Procedure mal_greater_than([](TokenVector tokens)->TokenVector
+Procedure mal_greater_than([](Reader& tokens)->Reader
 {
-    TokenVector car, cdr;
+    PairPtr car, cdr;
     car.append(tokens.car());
     cdr.append(tokens.cdr());
 
     if (!is_mal_numeric(car.peek()->type()))
     {
-        throw new NonNumericComparisonException(car.next()->value(), cdr.next()->value());
+        throw new NonNumericComparisonException(car.next()->to_str(), cdr.next()->to_str());
     }
 
 
-    TokenVector mal_true, mal_false;
+    PairPtr mal_true, mal_false;
     mal_true.append(std::make_shared<MalBoolean>("true"));
     mal_false.append(std::make_shared<MalBoolean>("false"));
 
@@ -918,8 +337,8 @@ Procedure mal_greater_than([](TokenVector tokens)->TokenVector
     {
         case MAL_INTEGER:
             {
-                auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 > comp2)
                 {
                     return mal_true;
@@ -932,8 +351,8 @@ Procedure mal_greater_than([](TokenVector tokens)->TokenVector
             break;
         case MAL_RATIONAL:
             {
-                auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 > comp2)
                 {
                     return mal_true;
@@ -946,8 +365,8 @@ Procedure mal_greater_than([](TokenVector tokens)->TokenVector
             break;
         case MAL_FRACTIONAL:
             {
-                auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 > comp2)
                 {
                     return mal_true;
@@ -960,23 +379,23 @@ Procedure mal_greater_than([](TokenVector tokens)->TokenVector
             break;
 
         default:
-            throw new NonNumericComparisonException(car.next()->value(), cdr.next()->value());
+            throw new NonNumericComparisonException(car.next()->to_str(), cdr.next()->to_str());
     }
 });
 
-Procedure mal_less_than([](TokenVector tokens)->TokenVector
+Procedure mal_less_than([](Reader& tokens)->Reader
 {
-    TokenVector car, cdr;
+    PairPtr car, cdr;
     car.append(tokens.car());
     cdr.append(tokens.cdr());
 
     if (!is_mal_numeric(car.peek()->type()))
     {
-        throw new NonNumericComparisonException(car.next()->value(), cdr.next()->value());
+        throw new NonNumericComparisonException(car.next()->to_str(), cdr.next()->to_str());
     }
 
 
-    TokenVector mal_true, mal_false;
+    PairPtr mal_true, mal_false;
     mal_true.append(std::make_shared<MalBoolean>("true"));
     mal_false.append(std::make_shared<MalBoolean>("false"));
 
@@ -990,8 +409,8 @@ Procedure mal_less_than([](TokenVector tokens)->TokenVector
     {
         case MAL_INTEGER:
             {
-                auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 < comp2)
                 {
                     return mal_true;
@@ -1004,8 +423,8 @@ Procedure mal_less_than([](TokenVector tokens)->TokenVector
             break;
         case MAL_RATIONAL:
             {
-                auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 < comp2)
                 {
                     return mal_true;
@@ -1018,8 +437,8 @@ Procedure mal_less_than([](TokenVector tokens)->TokenVector
             break;
         case MAL_FRACTIONAL:
             {
-                auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 < comp2)
                 {
                     return mal_true;
@@ -1032,24 +451,24 @@ Procedure mal_less_than([](TokenVector tokens)->TokenVector
             break;
 
         default:
-            throw new NonNumericComparisonException(car.next()->value(), cdr.next()->value());
+            throw new NonNumericComparisonException(car.next()->to_str(), cdr.next()->to_str());
     }
 });
 
 
-Procedure mal_greater_equal([](TokenVector tokens)->TokenVector
+Procedure mal_greater_equal([](Reader& tokens)->Reader
 {
-    TokenVector car, cdr;
+    PairPtr car, cdr;
     car.append(tokens.car());
     cdr.append(tokens.cdr());
 
     if (!is_mal_numeric(car.peek()->type()))
     {
-        throw new NonNumericComparisonException(car.next()->value(), cdr.next()->value());
+        throw new NonNumericComparisonException(car.next()->to_str(), cdr.next()->to_str());
     }
 
 
-    TokenVector mal_true, mal_false;
+    PairPtr mal_true, mal_false;
     mal_true.append(std::make_shared<MalBoolean>("true"));
     mal_false.append(std::make_shared<MalBoolean>("false"));
 
@@ -1063,8 +482,8 @@ Procedure mal_greater_equal([](TokenVector tokens)->TokenVector
     {
         case MAL_INTEGER:
             {
-                auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 >= comp2)
                 {
                     return mal_true;
@@ -1077,8 +496,8 @@ Procedure mal_greater_equal([](TokenVector tokens)->TokenVector
             break;
         case MAL_RATIONAL:
             {
-                auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 >= comp2)
                 {
                     return mal_true;
@@ -1091,8 +510,8 @@ Procedure mal_greater_equal([](TokenVector tokens)->TokenVector
             break;
         case MAL_FRACTIONAL:
             {
-                auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 >= comp2)
                 {
                     return mal_true;
@@ -1105,23 +524,23 @@ Procedure mal_greater_equal([](TokenVector tokens)->TokenVector
             break;
 
         default:
-            throw new NonNumericComparisonException(car.next()->value(), cdr.next()->value());
+            throw new NonNumericComparisonException(car.next()->to_str(), cdr.next()->to_str());
     }
 });
 
-Procedure mal_less_equal([](TokenVector tokens)->TokenVector
+Procedure mal_less_equal([](Reader& tokens)->Reader
 {
-    TokenVector car, cdr;
+    PairPtr car, cdr;
     car.append(tokens.car());
     cdr.append(tokens.cdr());
 
     if (!is_mal_numeric(car.peek()->type()))
     {
-        throw new NonNumericComparisonException(car.next()->value(), cdr.next()->value());
+        throw new NonNumericComparisonException(car.next()->to_str(), cdr.next()->to_str());
     }
 
 
-    TokenVector mal_true, mal_false;
+    PairPtr mal_true, mal_false;
     mal_true.append(std::make_shared<MalBoolean>("true"));
     mal_false.append(std::make_shared<MalBoolean>("false"));
 
@@ -1135,8 +554,8 @@ Procedure mal_less_equal([](TokenVector tokens)->TokenVector
     {
         case MAL_INTEGER:
             {
-                auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalInteger*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalInteger*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 <= comp2)
                 {
                     return mal_true;
@@ -1149,8 +568,8 @@ Procedure mal_less_equal([](TokenVector tokens)->TokenVector
             break;
         case MAL_RATIONAL:
             {
-                auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalRational*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalRational*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 <= comp2)
                 {
                     return mal_true;
@@ -1163,8 +582,8 @@ Procedure mal_less_equal([](TokenVector tokens)->TokenVector
             break;
         case MAL_FRACTIONAL:
             {
-                auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_value();
-                auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_value();
+                auto comp1 = dynamic_cast<MalFractional*>(&(*car.next()))->numeric_to_str();
+                auto comp2 = dynamic_cast<MalFractional*>(&(*cdr.next()))->numeric_to_str();
                 if (comp1 <= comp2)
                 {
                     return mal_true;
@@ -1176,27 +595,27 @@ Procedure mal_less_equal([](TokenVector tokens)->TokenVector
             }
             break;
         default:
-            throw new NonNumericComparisonException(car.next()->value(), cdr.next()->value());
+            throw new NonNumericComparisonException(car.next()->to_str(), cdr.next()->to_str());
     }
 });
 
 
 // list operators
 
-Procedure mal_list([](TokenVector tokens)->TokenVector
+Procedure mal_list([](Reader& tokens)->Reader
 {
     auto list =  std::make_shared<MalList>(tokens);
-    TokenVector result;
+    PairPtr result;
     result.append(list);
     return result;
 });
 
-Procedure mal_count([](TokenVector tokens)->TokenVector
+Procedure mal_count([](Reader& tokens)->Reader
 {
-    TokenVector result;
+    PairPtr result;
     if (tokens.peek()->type() == MAL_LIST || tokens.peek()->type() == MAL_VECTOR)
     {
-        auto size = tokens.next()->raw_value().size();
+        auto size = tokens.next()->raw_to_str().size();
         auto count = std::make_shared<MalInteger>(size);
         result.append(count);
     }
@@ -1210,15 +629,15 @@ Procedure mal_count([](TokenVector tokens)->TokenVector
 });
 
 
-Procedure mal_cons([](TokenVector tokens)->TokenVector
+Procedure mal_cons([](Reader& tokens)->Reader
 {
-    TokenVector temp, result;
+    PairPtr temp, result;
 
     temp.append(tokens.next());
     auto type = tokens.peek()->type();
     if (type == MAL_LIST)
     {
-        auto elements = tokens.next()->raw_value();
+        auto elements = tokens.next()->raw_to_str();
         for (auto element = elements.next(); element != nullptr; element = elements.next())
         {
             temp.append(element);
@@ -1227,7 +646,7 @@ Procedure mal_cons([](TokenVector tokens)->TokenVector
     }
     else if (type == MAL_VECTOR)
     {
-        auto elements = tokens.next()->raw_value();
+        auto elements = tokens.next()->raw_to_str();
         for (auto element = elements.next(); element != nullptr; element = elements.next())
         {
             temp.append(element);
@@ -1236,35 +655,35 @@ Procedure mal_cons([](TokenVector tokens)->TokenVector
     }
     else
     {
-        throw new InvalidConsPairException(tokens.peek()->value());
+        throw new InvalidConsPairException(tokens.peek()->to_str());
     }
 
     return result;
 });
 
-Procedure mal_car([](TokenVector tokens)->TokenVector
+Procedure mal_car([](Reader& tokens)->Reader
 {
     auto type = tokens.peek()->type();
     if (is_mal_container(type))
     {
-        TokenVector result;
-        result.append(tokens.next()->raw_value().car());
+        PairPtr result;
+        result.append(tokens.next()->raw_to_str().car());
         return result;
     }
     else
     {
-        throw new InvalidConsPairException(tokens.peek()->value());
+        throw new InvalidConsPairException(tokens.peek()->to_str());
     }
 });
 
 
-Procedure mal_cdr([](TokenVector tokens)->TokenVector
+Procedure mal_cdr([](Reader& tokens)->Reader
 {
     auto type = tokens.peek()->type();
     if (is_mal_container(type))
     {
-        TokenVector result, collector;
-        auto elements = tokens.next()->raw_value();
+        PairPtr result, collector;
+        auto elements = tokens.next()->raw_to_str();
         elements.next();                // discard car value
         for (auto element = elements.next(); element != nullptr; element = elements.next())
         {
@@ -1275,13 +694,13 @@ Procedure mal_cdr([](TokenVector tokens)->TokenVector
     }
     else
     {
-        throw new InvalidConsPairException(tokens.peek()->value());
+        throw new InvalidConsPairException(tokens.peek()->to_str());
     }
 });
 
-Procedure mal_is_empty([](TokenVector tokens)->TokenVector
+Procedure mal_is_empty([](Reader& tokens)->Reader
 {
-    TokenVector mal_true, mal_false;
+    PairPtr mal_true, mal_false;
     mal_true.append(std::make_shared<MalBoolean>("true"));
     mal_false.append(std::make_shared<MalBoolean>("false"));
 
@@ -1299,7 +718,7 @@ Procedure mal_is_empty([](TokenVector tokens)->TokenVector
         }
         else
         {
-            if (tokens.next()->raw_value().size() == 0)
+            if (tokens.next()->raw_to_str().size() == 0)
             {
                 return mal_true;
             }
@@ -1311,9 +730,9 @@ Procedure mal_is_empty([](TokenVector tokens)->TokenVector
 
 // type predicates
 
-Procedure mal_is_list([](TokenVector tokens)->TokenVector
+Procedure mal_is_list([](Reader& tokens)->Reader
 {
-    TokenVector mal_true, mal_false;
+    PairPtr mal_true, mal_false;
     mal_true.append(std::make_shared<MalBoolean>("true"));
     mal_false.append(std::make_shared<MalBoolean>("false"));
 
@@ -1328,9 +747,9 @@ Procedure mal_is_list([](TokenVector tokens)->TokenVector
 });
 
 
-Procedure mal_is_number([](TokenVector tokens)->TokenVector
+Procedure mal_is_number([](Reader& tokens)->Reader
 {
-    TokenVector mal_true, mal_false;
+    PairPtr mal_true, mal_false;
     mal_true.append(std::make_shared<MalBoolean>("true"));
     mal_false.append(std::make_shared<MalBoolean>("false"));
 
@@ -1410,11 +829,7 @@ std::string filter_escapes(std::string source, bool complete = false)
 
 
 
-
-
-
-
-Procedure mal_str([](TokenVector tokens)->TokenVector
+Procedure mal_str([](Reader& tokens)->Reader
 {
     std::string s = "";
 
@@ -1422,14 +837,14 @@ Procedure mal_str([](TokenVector tokens)->TokenVector
     {
         s += pr_str(tokens, false);
     }
-    TokenVector str;
+    PairPtr str;
     str.append(std::make_shared<MalString>(s));
     return str;
 });
 
 
 
-Procedure mal_pr_str([](TokenVector tokens)->TokenVector
+Procedure mal_pr_str([](Reader& tokens)->Reader
 {
     std::string s = "";
 
@@ -1437,7 +852,7 @@ Procedure mal_pr_str([](TokenVector tokens)->TokenVector
     {
         for (auto token = tokens.next(); token != nullptr; token = tokens.next())
         {
-            TokenVector t;
+            PairPtr t;
             t.append(token);
             s += pr_str(t, true);
             if (tokens.peek() != nullptr)
@@ -1447,14 +862,14 @@ Procedure mal_pr_str([](TokenVector tokens)->TokenVector
         }
     }
 
-    TokenVector str;
+    PairPtr str;
 
     str.append(std::make_shared<MalString>(s));
     return str;
 });
 
 
-Procedure mal_prn([](TokenVector tokens)->TokenVector
+Procedure mal_prn([](Reader& tokens)->Reader
 {
     if (tokens.size() > 0)
     {
@@ -1463,19 +878,19 @@ Procedure mal_prn([](TokenVector tokens)->TokenVector
 
     std::cout << '\n';
 
-    TokenVector mal_nil;
+    PairPtr mal_nil;
     mal_nil.append(std::make_shared<MalNil>());
     return mal_nil;
 });
 
 
-Procedure mal_println([](TokenVector tokens)->TokenVector
+Procedure mal_println([](Reader& tokens)->Reader
 {
     if (tokens.values().length() != 0)
     {
         for (size_t i = 0; i < tokens.size(); ++i)
         {
-            TokenVector temp;
+            PairPtr temp;
             temp.append(tokens[i]);
             auto str = mal_str(temp);
             std::string s = str.values();
@@ -1489,18 +904,18 @@ Procedure mal_println([](TokenVector tokens)->TokenVector
     }
     std::cout << '\n';
 
-    TokenVector mal_nil;
+    PairPtr mal_nil;
     mal_nil.append(std::make_shared<MalNil>());
     return mal_nil;
 });
-
+ */
 
 
 void init_global_environment()
 {
     // basic arithmetic
     repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("+"), mal_plus, -2));
-    repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("-"), mal_minus, -1));
+/*     repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("-"), mal_minus, -1));
     repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("*"), mal_multiply, -2));
     repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("/"), mal_divide, 2));
     repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("%"), mal_modulo, 2));
@@ -1529,5 +944,5 @@ void init_global_environment()
     repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("prn"), mal_prn, -1));
     repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("str"), mal_str, -1));
     repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("pr-str"), mal_pr_str, -1));
-    repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("println"), mal_println, -1));
+    repl_env.set(std::make_shared<Env_Primitive>(std::make_shared<MalSymbol>("println"), mal_println, -1)); */
 }

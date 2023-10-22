@@ -16,6 +16,9 @@ public:
     Reader(MalPtr tokens): m_current_token(tokens), m_tokens(tokens) {};
     MalPtr peek();
     MalPtr next();
+    MalPtr rest();
+    MalPtr list() { return m_current_token; };
+    bool is_empty() {return (m_current_token == nullptr);};
 
 private:
     MalPtr m_current_token;

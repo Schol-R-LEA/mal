@@ -18,7 +18,7 @@
 #include "eval.h"
 
 
-TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
+Reader EVAL(Reader& input, Env_Frame& parent_env)
 {
     Env_Frame env = parent_env;
 
@@ -28,7 +28,7 @@ TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
         {
             throw new NullTokenException();
         }
-        if (input.empty())
+        if (input.is_empty())
         {
             env.pop();
             return input;
@@ -39,13 +39,13 @@ TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
         {
             return eval_ast(input, env);
         }
-        else if (type == MAL_LIST)
+        else if (type == MAL_PAIR)
         {
-            auto form = input.peek()->raw_value().car()->value();
+            auto form = input.peek()->as_pair().car()->to_str();
 
             if (form == "def!")
             {
-                TokenVector temp;
+                 temp;
                 temp.append(input.next()->raw_value());
                 auto result = eval_def(temp, env);
                 return result;
@@ -126,8 +126,8 @@ TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
                                 TokenVector args;
                                 args.append(std::make_shared<MalList>(cooked_args));
 
-                                // WARNING: This function uses downcasting of a pointer from it's parent class to 
-                                // the actual subclass. This is VERY questionable, and if possible a better 
+                                // WARNING: This function uses downcasting of a pointer from it's parent class to
+                                // the actual subclass. This is VERY questionable, and if possible a better
                                 // solution should be found!
                                 auto proc_frame = (dynamic_cast<MalProcedure*>(&(*procedure)));
                                 input = proc_frame->ast();
@@ -153,7 +153,7 @@ TokenVector EVAL(TokenVector& input, Env_Frame& parent_env)
 }
 
 
-TokenVector eval_ast(TokenVector& input, Env_Frame& env)
+Reader eval_ast(Reader& input, Env_Frame& env)
 {
     TokenVector result;
     MalPtr peek = input.peek();
@@ -250,7 +250,7 @@ TokenVector eval_ast(TokenVector& input, Env_Frame& env)
 }
 
 
-TokenVector eval_vec(TokenVector& input, Env_Frame& env)
+Reader eval_vec(Reader& input, Env_Frame& env)
 {
     TokenVector temp, elements;
     for (MalPtr elem = input.next(); elem != nullptr; elem = input.next())
@@ -266,7 +266,7 @@ TokenVector eval_vec(TokenVector& input, Env_Frame& env)
     return result;
 }
 
-TokenVector eval_hashmap(HashMapInternal& input, Env_Frame& env)
+Reader eval_hashmap(HashMapInternal& input, Env_Frame& env)
 {
     HashMapInternal resultant;
 
@@ -285,7 +285,7 @@ TokenVector eval_hashmap(HashMapInternal& input, Env_Frame& env)
 }
 
 
-TokenVector eval_def(TokenVector& input, Env_Frame& env)
+Reader eval_def(Reader& input, Env_Frame& env)
 {
     if (input.next()->value() == "def!")
     {
@@ -337,7 +337,7 @@ TokenVector eval_def(TokenVector& input, Env_Frame& env)
     }
 }
 
-TokenVector eval_let(TokenVector& input, Env_Frame& env)
+Reader eval_let(Reader& input, Env_Frame& env)
 {
     if (input.next()->value() == "let*")
     {
@@ -421,7 +421,7 @@ TokenVector eval_let(TokenVector& input, Env_Frame& env)
 
 
 
-TokenVector eval_quasiquoted(TokenVector& input, Env_Frame& env, bool islist)
+Reader eval_quasiquoted(Reader& input, Env_Frame& env, bool islist)
 {
     TokenVector elements, result;
 
@@ -457,7 +457,7 @@ TokenVector eval_quasiquoted(TokenVector& input, Env_Frame& env, bool islist)
 }
 
 
-TokenVector eval_do(TokenVector& input, Env_Frame& env)
+Reader eval_do(Reader& input, Env_Frame& env)
 {
     auto discard = input.next();       // discard the 'do' symbol
     TokenVector final_value;
@@ -475,7 +475,7 @@ TokenVector eval_do(TokenVector& input, Env_Frame& env)
 }
 
 
-TokenVector eval_if(TokenVector& input, Env_Frame& env)
+Reader eval_if(Reader& input, Env_Frame& env)
 {
     auto discard = input.next();    // discard the 'if' symbol
     TokenVector test;
@@ -507,7 +507,7 @@ TokenVector eval_if(TokenVector& input, Env_Frame& env)
 }
 
 
-// TokenVector eval_fn(TokenVector& input, Env_Frame& env)
+// Reader eval_fn(Reader& input, Env_Frame& env)
 // {
 //     auto discard = input.next();    // discard the 'fn*' symbol
 //     TokenVector parameters;

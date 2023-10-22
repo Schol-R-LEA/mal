@@ -15,7 +15,7 @@
 #include "env.h"
 
 
-TokenVector apply_fn(EnvSymbolPtr fn, TokenVector args)
+MalPtr apply_fn(EnvSymbolPtr fn, PairPtr args)
 {
     if (fn->type() != ENV_PRIMITIVE && fn->type() != ENV_PROCEDURE)
     {

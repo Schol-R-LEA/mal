@@ -20,6 +20,7 @@
 
 class Environment;
 class Env_Symbol;
+class Reader;
 
 typedef std::shared_ptr<Env_Symbol> EnvSymbolPtr;
 typedef std::shared_ptr<Environment> EnvPtr;
@@ -59,11 +60,15 @@ typedef std::shared_ptr<MalObject> MalPtr;
 typedef std::shared_ptr<MalPair> PairPtr;
 typedef std::shared_ptr<MalVector> VecPtr;
 typedef std::shared_ptr<MalHashmap> MapPtr;
+typedef std::shared_ptr<MalProcedure> ProcPtr;
 
 // types for the internal representations for collection classes
 typedef std::vector<MalPtr> InternalVector;
-
 typedef std::unordered_map<MalPtr, MalPtr> InternalHashmap;
+
+// types representing a mal procedure
+typedef std::function<Reader(Reader&)> Procedure;
+typedef std::shared_ptr<Procedure> ProcedurePtr;
 
 
 // Complex type
@@ -142,7 +147,7 @@ public:
     virtual mpq_class as_rational() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_INTEGER]); return 0;};
     virtual mpf_class as_fractional() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_INTEGER]); return mpf_class(0);};
     virtual complex_mpf as_complex() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_INTEGER]); return complex_mpf(0, 0);};
-    virtual MalPtr as_procedure() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_PROCEDURE]); return nullptr;};
+    virtual ProcPtr as_procedure() {throw InvalidConversionException(mal_type_name[m_type], mal_type_name[MAL_PROCEDURE]); return nullptr;};
 protected:
     MalType m_type;
 };
@@ -275,6 +280,7 @@ public:
     virtual size_t size() {return m_hashmap.size();};
     virtual bool is_hashmap() {return true;};
     virtual MapPtr as_hashmap() {return shared_from_this();};
+    virtual InternalHashmap get_internal_hashmap() {return m_hashmap;};
     virtual void add(MalPtr key, MalPtr value) {m_hashmap[key] = value;};
     virtual bool operator==(const MalHashmap& hm) noexcept {return (m_hashmap == hm.m_hashmap);};
     virtual MalPtr operator[](const MalPtr hm) {return m_hashmap[hm];};
@@ -345,11 +351,12 @@ protected:
 };
 
 
-class MalProcedure: public MalCollection
+class MalProcedure: public MalCollection, public std::enable_shared_from_this<MalProcedure>
 {
 public:
     MalProcedure(PairPtr code, PairPtr parameters, EnvPtr parent, int arity): MalCollection(MAL_PROCEDURE), m_code(code), m_parameters(parameters), m_parent(parent), m_arity(arity) {};
     virtual bool is_procedure() {return true;};
+    ProcPtr as_procedure() {return shared_from_this();};
     virtual PairPtr ast() {return m_code;};
     virtual PairPtr params() {return m_parameters;};
     virtual EnvPtr parent() {return m_parent;};

@@ -9,8 +9,7 @@
 
 #include <functional>
 #include <stack>
-#include <typeinfo>
-#include <cstdarg>
+#include "reader.h"
 #include "types.h"
 
 
@@ -18,7 +17,7 @@ class Environment
 {
 public:
     Environment(std::shared_ptr<Environment> p = nullptr): parent(p) {};
-    Environment(std::shared_ptr<Environment> p, MalPair binds, MalPair exprs);
+    Environment(std::shared_ptr<Environment> p, PairPtr binds, PairPtr exprs);
     void set(EnvSymbolPtr element);
     void set(std::string symbol, MalPtr value);
     void set(MalPtr symbol, MalPtr value);
@@ -40,17 +39,16 @@ typedef std::stack<EnvPtr> Env_Frame;
 enum Env_Element_Type {ENV_SYMBOL, ENV_PRIMITIVE, ENV_PROCEDURE};
 
 
-
 class Env_Symbol
 {
 public:
-    Env_Symbol(MalPtr s, MalPtr v = nullptr);
+    Env_Symbol(MalPtr s, MalPtr v = nullptr): sym(s->as_symbol()), val(v), n_ary(0) {};
     virtual Env_Element_Type type() {return ENV_SYMBOL;};
     virtual MalSymbol symbol() {return sym;};
     virtual MalPtr value() {return val;};
     virtual int arity() {return n_ary;};
     virtual void set(MalPtr value);
-    virtual PairPtr apply(TokenVector& args) {return args;};
+    virtual PairPtr apply(PairPtr args) {return args;};
 protected:
     MalSymbol sym;
     MalPtr val;
@@ -63,7 +61,7 @@ class Env_Primitive: public Env_Symbol
 public:
     Env_Primitive(MalPtr s, Procedure p, int a): Env_Symbol(s), procedure(p) {n_ary = a;};
     virtual Env_Element_Type type() {return ENV_PRIMITIVE;};
-    virtual PairPtr apply(TokenVector& args);
+    virtual PairPtr apply(PairPtr args);
 
 protected:
     Procedure procedure;
